@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# synced content (populated by scripts/sync-content.sh)
+/content/
+/public/slides/*.html

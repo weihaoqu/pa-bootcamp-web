@@ -1,26 +1,139 @@
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --navy: #0f3460;
+  --navy-dark: #16213e;
+  --navy-fg: #1a1a2e;
+  --accent-red: #e94560;
+  --code-bg: #f4f4f8;
+  --border: #e2e8f0;
+  --sidebar-width: 280px;
+  --topnav-height: 56px;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-navy: var(--navy);
+  --color-navy-dark: var(--navy-dark);
+  --color-navy-fg: var(--navy-fg);
+  --color-accent-red: var(--accent-red);
+  --color-code-bg: var(--code-bg);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+  color: var(--navy-fg);
+  background: #f8f9fb;
+}
+
+/* Code font */
+code, pre, .font-mono {
+  font-family: "JetBrains Mono", "Fira Code", "SF Mono", "Cascadia Code", monospace;
+}
+
+/* Prose overrides for markdown content */
+.prose {
+  --tw-prose-headings: var(--navy);
+  --tw-prose-links: var(--accent-red);
+  max-width: 85ch;
+}
+
+.prose h1 {
+  color: var(--navy);
+  border-bottom: 3px solid var(--accent-red);
+  padding-bottom: 0.25em;
+}
+
+.prose h2 {
+  color: var(--navy);
+  border-bottom: 2px solid var(--accent-red);
+  display: inline-block;
+  padding-bottom: 0.15em;
+}
+
+.prose pre {
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.9em;
+}
+
+.prose code {
+  background: var(--code-bg);
+  padding: 0.15em 0.4em;
+  border-radius: 4px;
+  font-size: 0.88em;
+  color: var(--navy-dark);
+}
+
+.prose pre code {
+  background: none;
+  padding: 0;
+}
+
+.prose table {
+  font-size: 0.95em;
+}
+
+.prose th {
+  background: var(--navy);
+  color: white;
+}
+
+.prose tr:nth-child(even) {
+  background: #f8f8fc;
+}
+
+/* Slide viewer styles */
+.slide-content {
+  font-size: 1.2em;
+  line-height: 1.7;
+}
+
+.slide-content h1 {
+  font-size: 2.2em;
+  color: var(--navy);
+  margin-bottom: 0.5em;
+}
+
+.slide-content h2 {
+  font-size: 1.6em;
+  color: var(--navy);
+  border-bottom: 3px solid var(--accent-red);
+  display: inline-block;
+  padding-bottom: 4px;
+  margin-bottom: 0.5em;
+}
+
+.slide-content pre {
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1em 1.25em;
+  font-size: 0.85em;
+  overflow-x: auto;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* highlight.js theme overrides */
+.hljs {
+  background: var(--code-bg) !important;
 }
