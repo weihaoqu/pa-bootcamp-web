@@ -1,0 +1,1447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Module 3: Static Analysis Fundamentals</title>
+<style>
+  :root {
+    --bg: #ffffff; --fg: #1a1a2e; --accent: #e94560; --accent2: #0f3460;
+    --accent3: #16213e; --code-bg: #f4f4f8; --border: #ddd;
+    --shadow: rgba(0,0,0,0.08); --green: #27ae60; --orange: #f39c12;
+    --red: #e74c3c; --blue: #2980b9;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: #f0f0f5; color: var(--fg); overflow: hidden; height: 100vh; }
+  .deck { position: relative; width: 100vw; height: 100vh; }
+  .slide { display: none; position: absolute; inset: 0; padding: 48px 64px; background: var(--bg); overflow-y: auto; animation: fadeIn 0.3s ease; }
+  .slide.active { display: flex; flex-direction: column; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: none; } }
+  h1 { font-size: 2.8em; color: var(--accent2); margin-bottom: 8px; font-weight: 700; }
+  h2 { font-size: 2em; color: var(--accent2); margin-bottom: 16px; border-bottom: 3px solid var(--accent); padding-bottom: 8px; display: inline-block; }
+  h3 { font-size: 1.3em; color: var(--accent3); margin: 12px 0 6px; }
+  p, li { font-size: 1.15em; line-height: 1.6; margin-bottom: 8px; }
+  ul, ol { padding-left: 28px; }
+  strong { color: var(--accent2); }
+  em { color: var(--accent); font-style: normal; font-weight: 600; }
+  pre { background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; font-size: 0.95em; line-height: 1.5; overflow-x: auto; margin: 12px 0; font-family: 'JetBrains Mono', 'Fira Code', 'SF Mono', monospace; }
+  code { font-family: 'JetBrains Mono', 'Fira Code', 'SF Mono', monospace; background: var(--code-bg); padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+  pre code { background: none; padding: 0; }
+  table { border-collapse: collapse; margin: 12px 0; font-size: 1em; width: auto; }
+  th, td { border: 1px solid var(--border); padding: 8px 14px; text-align: left; }
+  th { background: var(--accent2); color: white; font-weight: 600; }
+  tr:nth-child(even) { background: #f8f8fc; }
+  .diagram { background: var(--code-bg); border: 2px solid var(--accent2); border-radius: 8px; padding: 20px; font-family: 'JetBrains Mono', monospace; font-size: 0.95em; line-height: 1.6; white-space: pre; margin: 12px 0; overflow-x: auto; }
+  .callout { border-left: 4px solid var(--accent); background: #fff5f7; padding: 12px 16px; margin: 12px 0; border-radius: 0 8px 8px 0; }
+  .callout-green { border-left: 4px solid var(--green); background: #f0faf4; padding: 12px 16px; margin: 12px 0; border-radius: 0 8px 8px 0; }
+  .callout-blue { border-left: 4px solid var(--blue); background: #f0f6ff; padding: 12px 16px; margin: 12px 0; border-radius: 0 8px 8px 0; }
+  .cols { display: flex; gap: 32px; flex: 1; }
+  .cols > div { flex: 1; }
+  .title-slide { justify-content: center; align-items: center; text-align: center; background: linear-gradient(135deg, var(--accent2) 0%, var(--accent3) 100%); color: white; }
+  .title-slide h1 { color: white; font-size: 3.5em; border: none; }
+  .title-slide h2 { color: rgba(255,255,255,0.85); border: none; font-size: 1.6em; font-weight: 400; }
+  .nav { position: fixed; bottom: 20px; right: 24px; display: flex; gap: 8px; z-index: 100; }
+  .nav button { background: var(--accent2); color: white; border: none; border-radius: 6px; padding: 10px 20px; font-size: 1em; cursor: pointer; transition: background 0.2s; }
+  .nav button:hover { background: var(--accent); }
+  .nav button:disabled { opacity: 0.3; cursor: default; }
+  .counter { position: fixed; bottom: 24px; left: 24px; font-size: 0.9em; color: #888; z-index: 100; }
+  .progress { position: fixed; top: 0; left: 0; height: 4px; background: var(--accent); transition: width 0.3s ease; z-index: 100; }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 0.85em; font-weight: 600; color: white; }
+  .badge-critical { background: var(--red); }
+  .badge-high { background: var(--orange); }
+  .badge-medium { background: var(--blue); }
+</style>
+</head>
+<body>
+<div class="progress" id="progress"></div>
+<div class="deck">
+
+<!-- Slide 1: Title -->
+<div class="slide title-slide">
+  <h1>Static Analysis Fundamentals</h1>
+  <h2>Module 3 &mdash; Program Analysis Bootcamp</h2>
+  <p style="margin-top:24px; font-size:1.1em; color:rgba(255,255,255,0.7);">
+    <strong style="color:white;">Instructor:</strong> Weihao &nbsp;|&nbsp;
+    <strong style="color:white;">Office Hours:</strong> By appointment, HH227
+  </p>
+</div>
+
+<!-- Slide 2: Learning Objectives -->
+<div class="slide">
+  <h2>Learning Objectives</h2>
+  <ul>
+    <li><strong>Construct</strong> control flow graphs (CFGs) from source code, identifying basic blocks and control structures</li>
+    <li><strong>Apply</strong> the dataflow analysis framework using lattices, transfer functions, and fixpoint computation</li>
+    <li><strong>Implement</strong> reaching definitions analysis by hand and through code</li>
+    <li><strong>Compare</strong> forward and backward dataflow analyses on the same program</li>
+    <li><strong>Evaluate</strong> limitations and scalability challenges of interprocedural analysis</li>
+    <li><strong>Design</strong> simple static analysis tools combining CFGs with dataflow analysis</li>
+  </ul>
+</div>
+
+<!-- Slide 3: Prerequisites Review -->
+<div class="slide">
+  <h2>Prerequisites Review</h2>
+  <div class="cols">
+    <div>
+      <h3>From Module 2 -- AST Knowledge:</h3>
+      <ul>
+        <li>ASTs provide structured representation of program syntax</li>
+        <li>Tree traversal techniques (pre-order, post-order)</li>
+        <li>Node types and their semantic meaning</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Mathematical Foundations:</h3>
+      <ul>
+        <li><strong>Set Theory:</strong> Union (&cup;), intersection (&cap;), difference (\)</li>
+        <li><strong>Graph Theory:</strong> Directed graphs, nodes, edges, paths, cycles</li>
+        <li><strong>Functions:</strong> Domain, range, composition</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- Slide 4: Lesson 1: Control Flow Graphs -->
+<div class="slide">
+  <h2>Lesson 1: Control Flow Graphs</h2>
+  <p>From code to flow -- how programs <em>actually</em> execute.</p>
+  <div class="diagram">Source Code  ---&gt;  AST  ---&gt;  CFG  ---&gt;  Dataflow Analysis
+  (text)        (tree)      (graph)      (properties)</div>
+  <p>ASTs tell us the <strong>structure</strong> of code.</p>
+  <p>CFGs tell us the <strong>execution paths</strong> through code.</p>
+</div>
+
+<!-- Slide 5: Why Control Flow Graphs? -->
+<div class="slide">
+  <h2>Why Control Flow Graphs?</h2>
+  <p>Consider this code -- how many paths exist?</p>
+  <pre><code>let example x y =
+  let a =
+    if x &gt; 0 then 1
+    else 2
+  in
+  let b =
+    if y &gt; 0 then a
+    else -a
+  in
+  b</code></pre>
+  <div class="callout">
+    <strong>Answer:</strong> 4 paths (2 &times; 2 branches). CFGs make all paths explicit.
+  </div>
+</div>
+
+<!-- Slide 6: Basic Blocks -->
+<div class="slide">
+  <h2>Basic Blocks</h2>
+  <p><strong>A maximal sequence of statements with:</strong></p>
+  <ul>
+    <li>Exactly <strong>one entry point</strong> and <strong>one exit point</strong></li>
+    <li><strong>No branching</strong> except at the end</li>
+  </ul>
+  <pre><code>(* This is ONE basic block: *)
+let x = 5
+let y = x + 3
+let z = y * 2</code></pre>
+  <div class="callout-green">
+    If the first statement runs, they all run.
+  </div>
+</div>
+
+<!-- Slide 7: Identifying Basic Block Boundaries -->
+<div class="slide">
+  <h2>Identifying Basic Block Boundaries</h2>
+  <p>A new basic block starts at:</p>
+  <ol>
+    <li>The <strong>first statement</strong> of a function</li>
+    <li>Any <strong>branch target</strong> (after if/else/loop headers)</li>
+    <li>Any statement <strong>immediately after</strong> a branch or jump</li>
+  </ol>
+  <pre><code>let example x =
+  let a = 1 in          (* --- Block 1 starts (function entry) *)
+  let b = 2 in          (*     still Block 1                   *)
+  let c =               (*     Block 1 ends (branch)           *)
+    if a &gt; b then
+      a + b             (* --- Block 2 starts (branch target)  *)
+    else
+      a - b             (* --- Block 3 starts (branch target)  *)
+  in
+  print_int c           (* --- Block 4 starts (merge point)    *)</code></pre>
+</div>
+
+<!-- Slide 8: Control Flow Graph (CFG) Definition -->
+<div class="slide">
+  <h2>Control Flow Graph (CFG) Definition</h2>
+  <p><strong>A directed graph G = (N, E) where:</strong></p>
+  <ul>
+    <li><strong>N</strong> = set of basic blocks (nodes)</li>
+    <li><strong>E</strong> = set of control flow edges between blocks</li>
+    <li><strong>Entry node</strong> = first block executed</li>
+    <li><strong>Exit node(s)</strong> = blocks that end with return/program end</li>
+  </ul>
+  <div class="callout-blue">
+    An edge (A, B) means: after block A executes, control <em>may</em> transfer to block B.
+  </div>
+</div>
+
+<!-- Slide 9: CFG: Sequential Code -->
+<div class="slide">
+  <h2>CFG: Sequential Code</h2>
+  <pre><code>let simple () =
+  let a = 1 in       (* Block 1 *)
+  let b = 2 in
+  let c = a + b in
+  c</code></pre>
+  <div class="diagram">ENTRY -&gt; [B1: a=1; b=2; c=a+b; return c] -&gt; EXIT</div>
+  <p>One block, one path -- the simplest possible CFG.</p>
+</div>
+
+<!-- Slide 10: CFG: If-Else Statement -->
+<div class="slide">
+  <h2>CFG: If-Else Statement</h2>
+  <pre><code>let conditional x =
+  let result =               (* Block 1 *)
+    if x &gt; 0 then
+      x * 2                  (* Block 2 *)
+    else
+      x * (-1)               (* Block 3 *)
+  in
+  print_int result;           (* Block 4 *)
+  result</code></pre>
+  <div class="diagram">        +-------+
+        | ENTRY |
+        +-------+
+            |
+            v
+      +----------+
+      | B1:      |
+      | x &gt; 0 ? |
+      +----------+
+       /        \
+   True        False
+     /            \
++--------+   +----------+
+| B2:    |   | B3:      |
+| r=x*2  |   | r=x*(-1) |
++--------+   +----------+
+     \            /
+      \          /
+       v        v
+      +----------+
+      | B4:      |
+      | print(r) |
+      | return r |
+      +----------+
+           |
+           v
+        +------+
+        | EXIT |
+        +------+</div>
+</div>
+
+<!-- Slide 11: CFG: While Loop (Code) -->
+<div class="slide">
+  <h2>CFG: While Loop (Code)</h2>
+  <pre><code>let loop n =
+  let i = ref 0 in             (* Block 1 *)
+  while !i &lt; n do              (* Block 2 (loop header) *)
+    print_int !i;              (* Block 3 (loop body) *)
+    i := !i + 1
+  done;
+  !i                           (* Block 4 *)</code></pre>
+  <div class="callout">
+    The <code>while</code> creates 4 blocks: init, header, body, exit.
+  </div>
+</div>
+
+<!-- Slide 12: CFG: While Loop (Diagram) -->
+<div class="slide">
+  <h2>CFG: While Loop (Diagram)</h2>
+  <div class="diagram">ENTRY -&gt; [B1: i=0] -&gt; [B2: i&lt;n?] -True-&gt; [B3: print(i); i=i+1]
+                              |                      |
+                            False                back edge
+                              v                      |
+                         [B4: return i]     B3 -------&gt; B2
+                              |
+                             EXIT</div>
+  <div class="callout">
+    The <strong>back edge</strong> from B3 to B2 creates a cycle -- this is the loop.
+  </div>
+</div>
+
+<!-- Slide 13: Predecessors and Successors -->
+<div class="slide">
+  <h2>Predecessors and Successors</h2>
+  <ul>
+    <li><strong>pred(B)</strong> = blocks that transfer control TO B</li>
+    <li><strong>succ(B)</strong> = blocks B transfers control TO</li>
+  </ul>
+  <p>From the while-loop:</p>
+  <pre><code>B1: {pred=ENTRY, succ=B2}
+B2: {pred=B1/B3, succ=B3/B4}
+B3: {pred=B2,    succ=B2}
+B4: {pred=B2,    succ=EXIT}</code></pre>
+  <div class="callout-green">
+    Predecessors and successors drive dataflow analysis.
+  </div>
+</div>
+
+<!-- Slide 14: CFG: Nested Structures -->
+<div class="slide">
+  <h2>CFG: Nested Structures</h2>
+  <pre><code>let complex x y =
+  let result =
+    if x &gt; 0 then begin                (* B1 *)
+      for i = 0 to y - 1 do           (* B2 (loop header) *)
+        if i mod 2 = 0 then           (* B3 *)
+          print_int i                  (* B4 *)
+        (* else: continue *)           (* B5 *)
+      done;
+      x + y                            (* B6 *)
+    end else
+      0                                (* B7 *)
+  in
+  result                               (* B8 *)</code></pre>
+  <div class="diagram">       +-------+
+       | ENTRY |
+       +-------+
+           |
+           v
+       +--------+
+       |B1:x&gt;0? |
+       +--------+
+       /        \
+      T          F
+     /            \
+  +--------+   +--------+
+  |B2:loop |   |B7:     |
+  |header  |&lt;--+r = 0   |--+
+  +--------+   +--------+  |
+   /     \                  |
+  T       F                 |
+ /         \                |
++-------+ +------+         |
+|B3:    | |B6:   |         |
+|i%2==0?| |r=x+y |         |
++-------+ +------+         |
+ /    \       \             |
+T      F       \            |
+|      |        \           |
++--+ +--+       |          |
+|B4| |B5|       |          |
++--+ +--+       |          |
+ \    /         |          |
+  v  v          v          |
+  [B2]       +--------+   |
+             |B8:     |&lt;--+
+             |return r|
+             +--------+</div>
+</div>
+
+<!-- Slide 15: Building CFGs from OCaml Code -->
+<div class="slide">
+  <h2>Building CFGs from OCaml Code</h2>
+  <p>Systematic algorithm for CFG construction:</p>
+  <pre><code>type basic_block = {
+  label : string;
+  mutable statements : stmt list;
+  mutable successors : basic_block list;
+  mutable predecessors : basic_block list;
+}
+
+let make_block label =
+  { label; statements = []; successors = []; predecessors = [] }
+
+let add_statement block stmt =
+  block.statements &lt;- block.statements @ [stmt]
+
+let add_edge source target =
+  source.successors &lt;- target :: source.successors;
+  target.predecessors &lt;- source :: target.predecessors</code></pre>
+</div>
+
+<!-- Slide 16: CFG Construction Algorithm -->
+<div class="slide">
+  <h2>CFG Construction Algorithm</h2>
+  <pre><code>let build_cfg ast_node =
+  (** Build a CFG from an AST. *)
+  let entry = make_block "ENTRY" in
+  let exit_block = make_block "EXIT" in
+  let blocks = ref [] in
+
+  let rec process_stmts stmts current_block =
+    List.fold_left (fun block stmt -&gt;
+      if is_branch stmt then           (* if/while/for *)
+        handle_branch stmt block blocks
+      else if is_return stmt then begin
+        add_statement block stmt;
+        add_edge block exit_block;
+        make_block (new_label ())
+      end else begin
+        add_statement block stmt;
+        block
+      end
+    ) current_block stmts
+  in
+
+  let last = process_stmts ast_node.body entry in
+  add_edge last exit_block;
+  (entry, exit_block, !blocks)</code></pre>
+</div>
+
+<!-- Slide 17: Lesson 2: The Dataflow Analysis Framework -->
+<div class="slide">
+  <h2>Lesson 2: The Dataflow Analysis Framework</h2>
+  <p>How do we compute program properties over CFGs?</p>
+  <div class="diagram">Control Flow Graph   +   Dataflow Framework
+   (structure)           (reasoning engine)
+                    =
+         Program Properties
+     (reaching defs, live vars, ...)</div>
+  <div class="callout-green">
+    The framework is <strong>general</strong> -- swap the lattice and transfer functions to get different analyses.
+  </div>
+</div>
+
+<!-- Slide 18: The Three Pillars of Dataflow Analysis -->
+<div class="slide">
+  <h2>The Three Pillars of Dataflow Analysis</h2>
+  <div class="diagram">+------------------+     +--------------------+     +-------------------+
+|    LATTICE       |     | TRANSFER FUNCTIONS |     | FIXPOINT          |
+|                  |     |                    |     | COMPUTATION       |
+| What info do we  |     | How does each      |     | How do we find    |
+| track?           |     | statement change   |     | the stable        |
+|                  |     | the info?          |     | solution?         |
+| (sets, values,   |     |                    |     |                   |
+|  properties)     |     | f: L -&gt; L          |     | Iterate until     |
+|                  |     |                    |     | nothing changes   |
++------------------+     +--------------------+     +-------------------+</div>
+  <p>Together, these guarantee:</p>
+  <ul>
+    <li><strong>Correctness</strong> -- results account for all paths</li>
+    <li><strong>Termination</strong> -- algorithm always finishes</li>
+    <li><strong>Uniqueness</strong> -- one well-defined solution</li>
+  </ul>
+</div>
+
+<!-- Slide 19: Lattice Theory for Dataflow -->
+<div class="slide">
+  <h2>Lattice Theory for Dataflow</h2>
+  <p>A <strong>lattice</strong> (L, &le;) is a partially ordered set where every pair has:</p>
+  <ul>
+    <li>A <strong>join</strong> (least upper bound): a &or; b</li>
+    <li>A <strong>meet</strong> (greatest lower bound): a &and; b</li>
+  </ul>
+  <div class="diagram">For Reaching Definitions, L = powerset of definitions:
+
+         {d1, d2, d3}        &lt;- TOP (all definitions)
+        /     |      \
+   {d1,d2} {d1,d3} {d2,d3}
+      |    \  |  /    |
+     {d1}  {d2}  {d3}
+        \    |    /
+           { }                &lt;- BOTTOM (no definitions)</div>
+  <ul>
+    <li><strong>Join (&or;)</strong> = set union (&cup;) -- "may" analysis</li>
+    <li><strong>Meet (&and;)</strong> = set intersection (&cap;) -- "must" analysis</li>
+  </ul>
+</div>
+
+<!-- Slide 20: Partial Orders -->
+<div class="slide">
+  <h2>Partial Orders</h2>
+  <p>A <strong>partial order</strong> on a set S is a relation &le; that is:</p>
+  <ul>
+    <li><strong>Reflexive:</strong> a &le; a for all a</li>
+    <li><strong>Antisymmetric:</strong> if a &le; b and b &le; a, then a = b</li>
+    <li><strong>Transitive:</strong> if a &le; b and b &le; c, then a &le; c</li>
+  </ul>
+  <p><strong>Example:</strong> Set inclusion (subset-of) on powerset of {a, b}:</p>
+  <p><code>{} &le; {a} &le; {a,b}</code> and <code>{} &le; {b} &le; {a,b}</code>, but <code>{a}</code> and <code>{b}</code> are <strong>incomparable</strong>.</p>
+</div>
+
+<!-- Slide 21: Hasse Diagrams -->
+<div class="slide">
+  <h2>Hasse Diagrams</h2>
+  <p>A Hasse diagram visualizes a partial order (draw edges only for immediate successors):</p>
+  <div class="diagram">Powerset of {a,b}:        Divisors of 12:
+
+     {a,b}                      12
+     /   \                     /   \
+   {a}   {b}                 4     6
+     \   /                   |  X  |
+      {}                     2     3
+                              \   /
+                                1</div>
+  <p>Read bottom-to-top: higher = "larger" in the ordering.</p>
+</div>
+
+<!-- Slide 22: Fixed-Point Theorems -->
+<div class="slide">
+  <h2>Fixed-Point Theorems</h2>
+  <div class="callout-blue">
+    <strong>Knaster-Tarski Theorem:</strong> If f is a monotone function on a complete lattice L, then f has a least fixed point.
+  </div>
+  <h3>Why this matters for dataflow analysis:</h3>
+  <ul>
+    <li>Our transfer functions are monotone (adding facts never removes facts)</li>
+    <li>The powerset lattice is complete</li>
+    <li>Therefore iterative analysis <strong>always converges</strong> to a unique solution</li>
+  </ul>
+  <p><strong>Monotone:</strong> if x &le; y, then f(x) &le; f(y)</p>
+</div>
+
+<!-- Slide 23: Ascending Chain Condition -->
+<div class="slide">
+  <h2>Ascending Chain Condition</h2>
+  <p><strong>Definition:</strong> A lattice satisfies the ACC if every ascending chain eventually stabilizes:</p>
+  <pre><code>a0 &le; a1 &le; a2 &le; ... &le; ak = ak+1 = ...</code></pre>
+  <div class="callout-green">
+    <strong>Termination guarantee:</strong> If the lattice has ACC and transfer functions are monotone, fixpoint iteration terminates in at most <strong>height(L)</strong> steps.
+  </div>
+  <p><strong>Powerset lattice</strong> P(S): height = |S|, so reaching definitions converges in at most |defs| iterations.</p>
+</div>
+
+<!-- Slide 24: Transfer Functions -->
+<div class="slide">
+  <h2>Transfer Functions</h2>
+  <p>Each basic block B has a transfer function: <strong>f_B : L &rarr; L</strong></p>
+  <p>For reaching definitions, the transfer function is:</p>
+  <pre><code>OUT[B] = gen[B] &cup; (IN[B] - kill[B])</code></pre>
+  <p>Where:</p>
+  <ul>
+    <li><strong>gen[B]</strong> = definitions created in block B</li>
+    <li><strong>kill[B]</strong> = definitions overwritten by block B</li>
+    <li><strong>IN[B]</strong> = definitions reaching block B's entry</li>
+    <li><strong>OUT[B]</strong> = definitions surviving past block B</li>
+  </ul>
+  <div class="diagram">         IN[B]
+           |
+           v
+    +-------------+
+    | Block B     |
+    |             |
+    | - kill[B]   |  Remove overwritten defs
+    | + gen[B]    |  Add new defs
+    |             |
+    +-------------+
+           |
+           v
+         OUT[B]</div>
+</div>
+
+<!-- Slide 25: Combining Information at Merge Points -->
+<div class="slide">
+  <h2>Combining Information at Merge Points</h2>
+  <p>When control flow merges, we must combine dataflow facts:</p>
+  <div class="diagram">  OUT[B1]     OUT[B2]
+      \         /
+       v       v
+    +-----------+
+    | MERGE     |
+    | IN[B3] =  |
+    |  combine( |
+    |  OUT[B1], |
+    |  OUT[B2]) |
+    +-----------+</div>
+  <div class="cols">
+    <div>
+      <h3>May analysis (reaching defs):</h3>
+      <p>IN[B] = &cup; { OUT[P] | P in pred(B) }</p>
+      <p>Union: a definition reaches if it comes from <em>ANY</em> predecessor</p>
+    </div>
+    <div>
+      <h3>Must analysis (available exprs):</h3>
+      <p>IN[B] = &cap; { OUT[P] | P in pred(B) }</p>
+      <p>Intersection: expression available only if from <em>ALL</em> predecessors</p>
+    </div>
+  </div>
+</div>
+
+<!-- Slide 26: Fixpoint Computation Algorithm -->
+<div class="slide">
+  <h2>Fixpoint Computation Algorithm</h2>
+  <pre><code>let fixpoint_analysis cfg ~direction:_ =
+  (** Generic iterative dataflow analysis. *)
+  (* Step 1: Initialize all blocks *)
+  let in_  = Hashtbl.create 16 in
+  let out_ = Hashtbl.create 16 in
+  List.iter (fun block -&gt;
+    Hashtbl.replace in_  block.label (initial_value ());
+    Hashtbl.replace out_ block.label (initial_value ())
+  ) cfg.blocks;
+
+  (* Step 2: Iterate until stable *)
+  let changed = ref true in
+  let iteration = ref 0 in
+  while !changed do
+    changed := false;
+    incr iteration;
+    List.iter (fun block -&gt;
+      let old_out = Hashtbl.find out_ block.label in
+
+      (* Combine from predecessors *)
+      let new_in = combine
+        (List.map (fun p -&gt; Hashtbl.find out_ p.label)
+           block.predecessors)
+      in
+      Hashtbl.replace in_ block.label new_in;
+
+      (* Apply transfer function *)
+      let new_out = transfer block new_in in
+      Hashtbl.replace out_ block.label new_out;
+
+      if not (DefSet.equal new_out old_out) then
+        changed := true
+    ) cfg.blocks
+  done;
+
+  Printf.printf "Fixpoint reached after %d iterations\n"
+    !iteration</code></pre>
+</div>
+
+<!-- Slide 27: Forward vs Backward Analysis -->
+<div class="slide">
+  <h2>Forward vs Backward Analysis</h2>
+  <div class="diagram">FORWARD (entry -&gt; exit)             BACKWARD (exit -&gt; entry)
+========================            =========================
+
+Direction of information:           Direction of information:
+    --------&gt;                           &lt;--------
+
+IN[B] = &cup; OUT[pred(B)]             OUT[B] = &cup; IN[succ(B)]
+OUT[B] = f(IN[B])                  IN[B] = f(OUT[B])
+
+Answers: "What happened                Answers: "What will
+ before this point?"                 happen after this point?"
+
+Examples:                           Examples:
+- Reaching Definitions              - Live Variables
+- Available Expressions             - Very Busy Expressions
+- Constant Propagation              - Anticipable Expressions</div>
+</div>
+
+<!-- Slide 28: May vs Must Analysis -->
+<div class="slide">
+  <h2>May vs Must Analysis</h2>
+  <table>
+    <tr><th>Property</th><th>May Analysis</th><th>Must Analysis</th></tr>
+    <tr><td><strong>Question</strong></td><td>"Could this be true on SOME path?"</td><td>"Is this true on ALL paths?"</td></tr>
+    <tr><td><strong>Merge operator</strong></td><td>Union (&cup;)</td><td>Intersection (&cap;)</td></tr>
+    <tr><td><strong>Soundness</strong></td><td>Over-approximates (safe)</td><td>Under-approximates (safe)</td></tr>
+    <tr><td><strong>False results</strong></td><td>May report too much</td><td>May miss some things</td></tr>
+    <tr><td><strong>Initial value</strong></td><td>Empty set (bottom)</td><td>Universal set (top)</td></tr>
+    <tr><td><strong>Example</strong></td><td>Reaching Definitions</td><td>Available Expressions</td></tr>
+  </table>
+  <p><strong>May analysis</strong> is pessimistic: assumes anything <em>could</em> happen.</p>
+  <p><strong>Must analysis</strong> is optimistic: only reports what <em>definitely</em> happens.</p>
+</div>
+
+<!-- Slide 29: Lesson 3: Reaching Definitions Analysis -->
+<div class="slide">
+  <h2>Lesson 3: Reaching Definitions Analysis</h2>
+  <p><strong>The fundamental question:</strong> For each variable use, which assignments <em>might</em> have provided that value?</p>
+  <pre><code>let x = 1 in        (* d1: definition of x *)
+let y = 2 in        (* d2: definition of y *)
+let x =
+  if cond then 3     (* d3: definition of x *)
+  else x
+in
+let z = x + y in    (* Which definition of x reaches here? *)
+                    (* Answer: d1 OR d3 (depends on cond) *)</code></pre>
+  <div class="callout-green">
+    This is the "Hello World" of dataflow analysis.
+  </div>
+</div>
+
+<!-- Slide 30: Gen and Kill Sets -->
+<div class="slide">
+  <h2>Gen and Kill Sets</h2>
+  <p>For each basic block, we compute:</p>
+  <ul>
+    <li><strong>gen[B]</strong> = definitions generated (created) in B</li>
+    <li><strong>kill[B]</strong> = definitions killed (overwritten) by B</li>
+  </ul>
+  <pre><code>(* Block B: *)
+let x = a + b in  (* d1: generates def of x, kills all other defs of x *)
+let y = c * d in  (* d2: generates def of y, kills all other defs of y *)</code></pre>
+  <pre><code>gen[B]  = {d1, d2}
+kill[B] = {all other definitions of x} &cup; {all other definitions of y}</code></pre>
+  <div class="callout">
+    Key insight: the <strong>last</strong> definition of a variable in a block is the one that survives in gen[B].
+  </div>
+</div>
+
+<!-- Slide 31: Gen/Kill: Step-by-Step Construction -->
+<div class="slide">
+  <h2>Gen/Kill: Step-by-Step Construction</h2>
+  <p>Walk through a block line-by-line, maintaining running gen and kill sets:</p>
+  <pre><code>Block B:               running gen    running kill
+  x = a + b   (d1)    {d1}           {other defs of x}
+  y = x * 2   (d2)    {d1, d2}       {other defs of x, y}
+  x = y + 1   (d3)    {d2, d3}       {other defs of x, y}
+  z = x       (d4)    {d2, d3, d4}   {other defs of x, y, z}</code></pre>
+  <div class="callout">
+    Note: d3 <strong>replaces</strong> d1 in gen (both define x, last one wins).
+  </div>
+</div>
+
+<!-- Slide 32: Gen/Kill: Multiple Definitions -->
+<div class="slide">
+  <h2>Gen/Kill: Multiple Definitions</h2>
+  <p>When a variable is defined more than once in a block:</p>
+  <pre><code>x = 1       (d1)    gen so far: {d1}
+y = x       (d2)    gen so far: {d1, d2}
+x = y + 1   (d3)    gen so far: {d2, d3}  &lt;- d1 removed!</code></pre>
+  <p>Only d3 (the <strong>last</strong> def of x) survives in gen[B].</p>
+  <p>Both d1 and d3 contribute to kill[B] (kill all <em>other</em> defs of x in the program).</p>
+</div>
+
+<!-- Slide 33: Gen/Kill: LHS vs RHS -->
+<div class="slide">
+  <h2>Gen/Kill: LHS vs RHS</h2>
+  <p><strong>LHS</strong> (left-hand side) = <strong>defines</strong> a variable:</p>
+  <pre><code>x = expr    &lt;- x is defined (goes into gen, contributes to kill)</code></pre>
+  <p><strong>RHS</strong> (right-hand side) = <strong>uses</strong> variables:</p>
+  <pre><code>x = a + b   &lt;- a and b are used (relevant for live variables)</code></pre>
+  <div class="callout-blue">
+    Extracting defined/used variables from each statement is the foundation for all gen/kill-style analyses.
+  </div>
+</div>
+
+<!-- Slide 34: Reaching Definitions: Dataflow Equations -->
+<div class="slide">
+  <h2>Reaching Definitions: Dataflow Equations</h2>
+  <p><strong>Forward may-analysis:</strong></p>
+  <pre><code>IN[B]  = &cup; { OUT[P] | P is a predecessor of B }
+
+OUT[B] = gen[B] &cup; (IN[B] - kill[B])</code></pre>
+  <p>Initialization:</p>
+  <pre><code>IN[ENTRY] = {} (no definitions reach the entry)
+OUT[B] = {} for all blocks initially</code></pre>
+  <div class="callout-green">
+    Termination guaranteed because:
+    <ul>
+      <li>The lattice (powerset of definitions) is finite</li>
+      <li>Transfer functions are monotone</li>
+      <li>Sets can only grow, and the lattice has a finite top</li>
+    </ul>
+  </div>
+</div>
+
+<!-- Slide 35: Reaching Definitions: Worked Example -->
+<div class="slide">
+  <h2>Reaching Definitions: Worked Example</h2>
+  <pre><code>let example x =
+  let a = 1 in           (* Block 1: d1 (def of a) *)
+  let b = 2 in           (*          d2 (def of b) *)
+  let a, b, c =
+    if x &gt; 0 then
+      let a = 3 in       (* Block 2: d3 (def of a) *)
+      let c = a in       (*          d4 (def of c) *)
+      (a, b, c)
+    else
+      let b = 4 in       (* Block 3: d5 (def of b) *)
+      let c = b in       (*          d6 (def of c) *)
+      (a, b, c)
+  in
+  Printf.printf "%d %d %d\n" a b c;  (* Block 4: uses a, b, c *)
+  a + b + c</code></pre>
+  <div class="diagram">         +------+
+         |ENTRY |
+         +------+
+             |
+             v
+        +---------+
+        | B1:     |
+        | a=1 (d1)|
+        | b=2 (d2)|
+        +---------+
+         /       \
+        v         v
+  +----------+ +----------+
+  | B2:      | | B3:      |
+  | a=3 (d3) | | b=4 (d5) |
+  | c=a (d4) | | c=b (d6) |
+  +----------+ +----------+
+        \       /
+         v     v
+      +-------------+
+      | B4:         |
+      | print(a,b,c)|
+      | return ...  |
+      +-------------+</div>
+</div>
+
+<!-- Slide 36: Step 1: Compute Gen/Kill Sets -->
+<div class="slide">
+  <h2>Step 1: Compute Gen/Kill Sets</h2>
+  <table>
+    <tr><th>Block</th><th>gen</th><th>kill</th></tr>
+    <tr><td>B1</td><td>{d1, d2}</td><td>{}</td></tr>
+    <tr><td>B2</td><td>{d3, d4}</td><td>{d1} (d3 kills d1: both define a)</td></tr>
+    <tr><td>B3</td><td>{d5, d6}</td><td>{d2} (d5 kills d2: both define b)</td></tr>
+    <tr><td>B4</td><td>{}</td><td>{}</td></tr>
+  </table>
+  <div class="callout-blue">
+    <strong>Why kill[B1] = {}?</strong> B1 is the first block. There are no prior definitions of <code>a</code> or <code>b</code> to kill.
+  </div>
+  <div class="callout">
+    <strong>Why kill[B2] includes d1?</strong> d3 (<code>a = 3</code>) overwrites d1 (<code>a = 1</code>). Any definition of <code>a</code> that enters B2 is killed.
+  </div>
+</div>
+
+<!-- Slide 37: Step 2: Iteration 0 (Initialize) -->
+<div class="slide">
+  <h2>Step 2: Iteration 0 (Initialize)</h2>
+  <table>
+    <tr><th>Block</th><th>IN</th><th>OUT</th></tr>
+    <tr><td>B1</td><td>{}</td><td>{}</td></tr>
+    <tr><td>B2</td><td>{}</td><td>{}</td></tr>
+    <tr><td>B3</td><td>{}</td><td>{}</td></tr>
+    <tr><td>B4</td><td>{}</td><td>{}</td></tr>
+  </table>
+  <p>All sets start empty. Now we iterate.</p>
+</div>
+
+<!-- Slide 38: Step 3: Iteration 1 -->
+<div class="slide">
+  <h2>Step 3: Iteration 1</h2>
+  <p><strong>B1:</strong> IN = {} (entry block, no predecessors)</p>
+  <pre><code>OUT[B1] = gen[B1] &cup; (IN[B1] - kill[B1])
+        = {d1,d2} &cup; ({} - {})
+        = {d1, d2}                          ** CHANGED **</code></pre>
+  <p><strong>B2:</strong> IN = OUT[B1] = {d1, d2}</p>
+  <pre><code>OUT[B2] = gen[B2] &cup; (IN[B2] - kill[B2])
+        = {d3,d4} &cup; ({d1,d2} - {d1})
+        = {d3,d4} &cup; {d2}
+        = {d2, d3, d4}                     ** CHANGED **</code></pre>
+  <p><strong>B3:</strong> IN = OUT[B1] = {d1, d2}</p>
+  <pre><code>OUT[B3] = gen[B3] &cup; (IN[B3] - kill[B3])
+        = {d5,d6} &cup; ({d1,d2} - {d2})
+        = {d5,d6} &cup; {d1}
+        = {d1, d5, d6}                     ** CHANGED **</code></pre>
+  <p><strong>B4:</strong> IN = OUT[B2] &cup; OUT[B3] = {d2,d3,d4} &cup; {d1,d5,d6}</p>
+  <pre><code>IN[B4]  = {d1, d2, d3, d4, d5, d6}        ** CHANGED **
+OUT[B4] = {} &cup; ({d1,d2,d3,d4,d5,d6} - {})
+        = {d1, d2, d3, d4, d5, d6}        ** CHANGED **</code></pre>
+</div>
+
+<!-- Slide 39: Step 4: Iteration 2 -->
+<div class="slide">
+  <h2>Step 4: Iteration 2</h2>
+  <p>Recompute all blocks with the new values:</p>
+  <table>
+    <tr><th>Block</th><th>IN</th><th>OUT</th><th>Changed?</th></tr>
+    <tr><td>B1</td><td>{}</td><td>{d1, d2}</td><td>No</td></tr>
+    <tr><td>B2</td><td>{d1, d2}</td><td>{d2, d3, d4}</td><td>No</td></tr>
+    <tr><td>B3</td><td>{d1, d2}</td><td>{d1, d5, d6}</td><td>No</td></tr>
+    <tr><td>B4</td><td>{d1,d2,d3,d4,d5,d6}</td><td>{d1,d2,d3,d4,d5,d6}</td><td>No</td></tr>
+  </table>
+  <div class="callout-green">
+    <strong>No changes!</strong> Fixpoint reached after 2 iterations.
+  </div>
+</div>
+
+<!-- Slide 40: Step 5: Interpret the Results -->
+<div class="slide">
+  <h2>Step 5: Interpret the Results</h2>
+  <p>At Block 4 entry, all six definitions reach: {d1, d2, d3, d4, d5, d6}</p>
+  <p>What does this mean for each variable?</p>
+  <table>
+    <tr><th>Variable</th><th>Reaching definitions</th><th>Interpretation</th></tr>
+    <tr><td><code>a</code></td><td>d1 (<code>a=1</code>) and d3 (<code>a=3</code>)</td><td>Value is 1 or 3 depending on branch</td></tr>
+    <tr><td><code>b</code></td><td>d2 (<code>b=2</code>) and d5 (<code>b=4</code>)</td><td>Value is 2 or 4 depending on branch</td></tr>
+    <tr><td><code>c</code></td><td>d4 (<code>c=a</code>) and d6 (<code>c=b</code>)</td><td>Value depends on branch taken</td></tr>
+  </table>
+  <div class="callout">
+    <strong>Application:</strong> A compiler cannot constant-fold <code>a + b + c</code> because multiple definitions reach the use site.
+  </div>
+</div>
+
+<!-- Slide 41: Reaching Definitions: Complete Iteration Table -->
+<div class="slide">
+  <h2>Reaching Definitions: Complete Iteration Table</h2>
+  <div class="diagram">+-------+-----+--------+--------+--------+-----------------+
+| Iter  |     | B1     | B2     | B3     | B4              |
+|       |     | IN OUT | IN OUT | IN OUT | IN         OUT  |
++-------+-----+--------+--------+--------+-----------------+
+| Init  |     | {} {}  | {} {}  | {} {}  | {}          {}  |
++-------+-----+--------+--------+--------+-----------------+
+|   1   | IN  | {}     |{d1,d2} |{d1,d2} |{d1,d2,d3,      |
+|       |     |        |        |        | d4,d5,d6}       |
+|       | OUT |{d1,d2} |{d2,d3, |{d1,d5, |{d1,d2,d3,      |
+|       |     |        | d4}    | d6}    | d4,d5,d6}       |
++-------+-----+--------+--------+--------+-----------------+
+|   2   |     | (no changes -- fixpoint reached)            |
++-------+-----+--------+--------+--------+-----------------+</div>
+</div>
+
+<!-- Slide 42: Worked Example: Reaching Defs with Loop -->
+<div class="slide">
+  <h2>Worked Example: Reaching Defs with Loop</h2>
+  <pre><code>let x = ref 1 in          (* B1: d1 *)
+while !x &lt; 10 do          (* B2: loop header *)
+  x := !x + 1             (* B3: d2 *)
+done;
+print_int !x               (* B4 *)</code></pre>
+  <table>
+    <tr><th>Iter</th><th>B1 OUT</th><th>B2 IN</th><th>B3 OUT</th><th>B4 IN</th></tr>
+    <tr><td>Init</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>
+    <tr><td>1</td><td>{d1}</td><td>{d1}</td><td>{d2}</td><td>{d1}</td></tr>
+    <tr><td>2</td><td>{d1}</td><td>{d1,d2}</td><td>{d2}</td><td>{d1,d2}</td></tr>
+    <tr><td>3</td><td colspan="4">no changes -- fixpoint</td></tr>
+  </table>
+  <div class="callout">
+    The <strong>back edge</strong> B3&rarr;B2 causes iteration 2 to add d2 to B2's IN.
+  </div>
+</div>
+
+<!-- Slide 43: Worked Example: Live Variables with Loop -->
+<div class="slide">
+  <h2>Worked Example: Live Variables with Loop</h2>
+  <pre><code>let x = ref 1 in          (* B1: def={x} *)
+while !x &lt; 10 do          (* B2: use={x} *)
+  x := !x + 1             (* B3: def={x}, use={x} *)
+done;
+print_int !x               (* B4: use={x} *)</code></pre>
+  <p>Working <strong>backward</strong> (OUT[B] = &cup; IN[succ(B)]):</p>
+  <table>
+    <tr><th>Iter</th><th>B4 IN</th><th>B3 IN</th><th>B2 IN</th><th>B1 IN</th></tr>
+    <tr><td>Init</td><td>{x}</td><td>{}</td><td>{}</td><td>{}</td></tr>
+    <tr><td>1</td><td>{x}</td><td>{x}</td><td>{x}</td><td>{}</td></tr>
+    <tr><td>2</td><td colspan="4">no changes -- fixpoint</td></tr>
+  </table>
+  <div class="callout-green">
+    x is live at every point because it is always used before the program ends.
+  </div>
+</div>
+
+<!-- Slide 44: Worked Example: Available Expressions -->
+<div class="slide">
+  <h2>Worked Example: Available Expressions</h2>
+  <pre><code>let t = a + b in     (* B1: e_gen={a+b} *)
+let c, a =           (* B2 header *)
+  if cond then
+    (a + b, a)        (* B3: e_gen={a+b} *)
+  else
+    (c, 5)            (* B4: e_kill={a+b} *)
+in
+let d = a + b in     (* B5 *)</code></pre>
+  <table>
+    <tr><th>Iter</th><th>B1 OUT</th><th>B3 OUT</th><th>B4 OUT</th><th>B5 IN</th></tr>
+    <tr><td>Init</td><td>U</td><td>U</td><td>U</td><td>U</td></tr>
+    <tr><td>1</td><td>{a+b}</td><td>{a+b}</td><td>{}</td><td>{a+b} &cap; {} = {}</td></tr>
+  </table>
+  <div class="callout">
+    At B5, <code>a+b</code> is <strong>not</strong> available (killed on the else path). Must recompute.
+  </div>
+</div>
+
+<!-- Slide 45: Lesson 4: Live Variables Analysis -->
+<div class="slide">
+  <h2>Lesson 4: Live Variables Analysis</h2>
+  <p><strong>The question:</strong> Which variables might be <strong>used in the future</strong> before being redefined?</p>
+  <pre><code>let a = 1 in        (* Is 'a' live here? YES (used at line 4) *)
+let _ = 2 in        (* Is 'b' live here? NO  (redefined at line 3) *)
+let b = a + 3 in    (* Is 'a' live here? YES (used here) *)
+Printf.printf "%d %d\n" a b
+                    (* 'a' and 'b' are live (used here) *)
+                    (* After this: nothing is live *)</code></pre>
+  <div class="callout-blue">
+    A variable is <strong>live</strong> at a point if its current value might be read before being overwritten. A variable is <strong>dead</strong> if it will definitely be overwritten before any future use.
+  </div>
+</div>
+
+<!-- Slide 46: Live Variables: Backward Analysis -->
+<div class="slide">
+  <h2>Live Variables: Backward Analysis</h2>
+  <p>Live variables flows <strong>backward</strong> -- from uses to definitions.</p>
+  <div class="diagram">FORWARD (Reaching Defs):        BACKWARD (Live Variables):
+  Information flows ------&gt;       Information flows &lt;------
+  IN[B] = &cup; OUT[pred(B)]         OUT[B] = &cup; IN[succ(B)]
+  OUT[B] = gen &cup; (IN - kill)     IN[B] = use &cup; (OUT - def)</div>
+  <p>Transfer function for live variables:</p>
+  <pre><code>IN[B] = use[B] &cup; (OUT[B] - def[B])</code></pre>
+  <p>Where:</p>
+  <ul>
+    <li><strong>use[B]</strong> = variables used in B before being defined in B</li>
+    <li><strong>def[B]</strong> = variables defined in B</li>
+  </ul>
+</div>
+
+<!-- Slide 47: Live Variables: Worked Example -->
+<div class="slide">
+  <h2>Live Variables: Worked Example</h2>
+  <pre><code>(* Using the same CFG structure: *)
+let example x =
+  let a = 1 in           (* B1: def={a,b}, use={} *)
+  let b = 2 in
+  let a, b, c =
+    if x &gt; 0 then
+      let a = 3 in       (* B2: def={a,c}, use={a} (c=a uses a) *)
+      let c = a in
+      (a, b, c)
+    else
+      let b = 4 in       (* B3: def={b,c}, use={b} (c=b uses b) *)
+      let c = b in
+      (a, b, c)
+  in
+  Printf.printf "%d %d %d\n" a b c  (* B4: def={}, use={a,b,c} *)</code></pre>
+  <p>Working <strong>backward</strong> from B4:</p>
+  <table>
+    <tr><th>Block</th><th>OUT</th><th>IN</th><th>Reasoning</th></tr>
+    <tr><td>B4</td><td>{}</td><td>{a, b, c}</td><td>Uses a, b, c; defines nothing</td></tr>
+    <tr><td>B2</td><td>{a, b, c}</td><td>{a, b}</td><td>use={a} &cup; ({a,b,c} - {a,c}) = {a} &cup; {b}</td></tr>
+    <tr><td>B3</td><td>{a, b, c}</td><td>{a, b}</td><td>use={b} &cup; ({a,b,c} - {b,c}) = {b} &cup; {a}</td></tr>
+    <tr><td>B1</td><td>{a, b}</td><td>{}</td><td>use={} &cup; ({a,b} - {a,b}) = {}</td></tr>
+  </table>
+  <p>At B1 entry: no variables need to be live (a and b are both defined here).</p>
+</div>
+
+<!-- Slide 48: Reaching Defs vs Live Variables -->
+<div class="slide">
+  <h2>Reaching Defs vs Live Variables</h2>
+  <table>
+    <tr><th>Property</th><th>Reaching Definitions</th><th>Live Variables</th></tr>
+    <tr><td>Direction</td><td>Forward</td><td>Backward</td></tr>
+    <tr><td>Question</td><td>"Where did this value come from?"</td><td>"Will this value be used later?"</td></tr>
+    <tr><td>Lattice</td><td>Sets of definitions</td><td>Sets of variables</td></tr>
+    <tr><td>Transfer</td><td>OUT = gen &cup; (IN - kill)</td><td>IN = use &cup; (OUT - def)</td></tr>
+    <tr><td>Merge</td><td>Union (may)</td><td>Union (may)</td></tr>
+    <tr><td>Initialization</td><td>IN[entry] = {}</td><td>OUT[exit] = {}</td></tr>
+    <tr><td>Application</td><td>Dead code, constant prop.</td><td>Register allocation</td></tr>
+  </table>
+  <div class="callout-green">
+    Both are <strong>may analyses</strong> using union at merge points: they track what <em>might</em> happen on some path.
+  </div>
+</div>
+
+<!-- Slide 49: Lesson 5: Available Expressions Analysis -->
+<div class="slide">
+  <h2>Lesson 5: Available Expressions Analysis</h2>
+  <p><strong>The question:</strong> Has an expression been computed on <strong>all</strong> paths reaching this point, with its operands unchanged?</p>
+  <pre><code>let a = x + y in      (* x+y is now available *)
+let b = a * 2 in
+let x =
+  if cond then
+    let _ = x + y in   (* x+y is STILL available -- reuse it! *)
+    x
+  else
+    5                  (* x changed -- x+y is KILLED *)
+in
+let d = x + y in      (* Is x+y available? NO (not on all paths) *)</code></pre>
+  <div class="callout-blue">
+    <strong>Application:</strong> Common Subexpression Elimination (CSE) -- avoid recomputing expressions that are already available.
+  </div>
+</div>
+
+<!-- Slide 50: Available Expressions: A Must Analysis -->
+<div class="slide">
+  <h2>Available Expressions: A Must Analysis</h2>
+  <p>Unlike reaching defs and live variables, this is a <strong>must analysis</strong>:</p>
+  <div class="callout">
+    An expression is available ONLY IF it has been computed on ALL paths reaching this point.
+  </div>
+  <p>This means we use <strong>intersection</strong> at merge points:</p>
+  <pre><code>IN[B] = &cap; { OUT[P] | P is a predecessor of B }
+
+OUT[B] = e_gen[B] &cup; (IN[B] - e_kill[B])</code></pre>
+  <p>Where:</p>
+  <ul>
+    <li><strong>e_gen[B]</strong> = expressions computed in B (and whose operands are not subsequently redefined in B)</li>
+    <li><strong>e_kill[B]</strong> = expressions whose operands are redefined in B</li>
+  </ul>
+  <p><strong>Initialization:</strong> IN[entry] = {}, all other IN[B] = U (universal set, all expressions)</p>
+</div>
+
+<!-- Slide 51: Available Expressions: Example -->
+<div class="slide">
+  <h2>Available Expressions: Example</h2>
+  <pre><code>(* Statement 1: *) let a = x + y in    (* generates x+y *)
+(* Statement 2: *) let b = a * 2 in    (* generates a*2 *)
+(* if condition: *)
+(*   Statement 3: *) (* c = x + y *)   (* generates x+y -- redundant! *)
+(*   Statement 4: *) (* a = c + 1 *)   (* kills a*2, since a changed *)
+(* Statement 5: *) (* print_int a *)
+(* Statement 6: *) (* d = b + a *)</code></pre>
+  <pre><code>After S1: available = {x+y}
+After S2: available = {x+y, a*2}
+Branch:
+  After S3: available = {x+y, a*2}  (x+y already available)
+  After S4: available = {x+y, c+1}  (a*2 killed, c+1 generated)
+Merge:
+  After merge: {x+y, a*2} &cap; {x+y, c+1} = {x+y}
+  (only x+y is available on ALL paths)</code></pre>
+</div>
+
+<!-- Slide 52: Three Analyses Compared -->
+<div class="slide">
+  <h2>Three Analyses Compared</h2>
+  <table>
+    <tr><th>Analysis</th><th>Direction</th><th>Merge Op</th><th>Type</th><th>Init (non-entry)</th><th>Application</th></tr>
+    <tr><td>Reaching Defs</td><td>Forward</td><td>Union (&cup;)</td><td>May</td><td>{}</td><td>Dead code elimination</td></tr>
+    <tr><td>Live Variables</td><td>Backward</td><td>Union (&cup;)</td><td>May</td><td>{}</td><td>Register allocation</td></tr>
+    <tr><td>Available Exprs</td><td>Forward</td><td>Intersection (&cap;)</td><td>Must</td><td>Universal set</td><td>CSE optimization</td></tr>
+  </table>
+  <div class="diagram">May analysis (Union):         Must analysis (Intersection):
+
+  {d1,d2}   {d2,d3}           {e1,e2}   {e2,e3}
+      \       /                    \       /
+       v     v                      v     v
+   {d1,d2,d3}                     {e2}
+   (anything possible)       (only what's certain)</div>
+</div>
+
+<!-- Slide 53: The General Dataflow Framework -->
+<div class="slide">
+  <h2>The General Dataflow Framework</h2>
+  <p>All three analyses are instances of the same framework:</p>
+  <pre><code>Framework = (L, V, T, F, d)</code></pre>
+  <table>
+    <tr><th>Component</th><th>Meaning</th><th>Reaching Defs</th><th>Live Vars</th><th>Available Exprs</th></tr>
+    <tr><td><strong>L</strong></td><td>Lattice</td><td>P(Definitions)</td><td>P(Variables)</td><td>P(Expressions)</td></tr>
+    <tr><td><strong>V</strong></td><td>Merge op</td><td>Union</td><td>Union</td><td>Intersection</td></tr>
+    <tr><td><strong>T</strong></td><td>Transfer</td><td>gen &cup; (IN-kill)</td><td>use &cup; (OUT-def)</td><td>e_gen &cup; (IN-e_kill)</td></tr>
+    <tr><td><strong>F</strong></td><td>Direction</td><td>Forward</td><td>Backward</td><td>Forward</td></tr>
+    <tr><td><strong>d</strong></td><td>Init</td><td>Bottom ({})</td><td>Bottom ({})</td><td>Top (all exprs)</td></tr>
+  </table>
+  <div class="callout-green">
+    To create a NEW analysis, just fill in this table!
+  </div>
+</div>
+
+<!-- Slide 54: Lesson 6: Interprocedural Analysis -->
+<div class="slide">
+  <h2>Lesson 6: Interprocedural Analysis</h2>
+  <p>So far: intraprocedural (single function). Real programs have many functions.</p>
+  <pre><code>let sanitize input_str =
+  Str.global_replace (Str.regexp_string "'") "''" input_str
+
+let query_db user_input =
+  let clean = sanitize user_input in    (* Is clean safe? *)
+  let sql = Printf.sprintf
+    "SELECT * FROM users WHERE name = '%s'" clean in
+  execute sql</code></pre>
+  <div class="callout">
+    To know if <code>clean</code> is safe, we must analyze <strong>across function boundaries</strong>.
+  </div>
+</div>
+
+<!-- Slide 55: Call Graphs -->
+<div class="slide">
+  <h2>Call Graphs</h2>
+  <p><strong>Definition:</strong> A directed graph where nodes are functions and edges are call relationships.</p>
+  <pre><code>let helper param =
+  param + 1
+
+let process_data x y =
+  let temp = x * 2 in
+  let result1 = helper temp in
+  let result2 = helper y in
+  result1 + result2
+
+let main () =
+  let a = 5 in
+  let b = 10 in
+  let _output = process_data a b in
+  ()</code></pre>
+  <div class="diagram">    +------+
+    | main |
+    +------+
+        |
+        v
+  +--------------+
+  | process_data |
+  +--------------+
+      /        \
+     v          v
+  +--------+ +--------+
+  | helper | | helper |
+  | (ctx1) | | (ctx2) |
+  +--------+ +--------+</div>
+</div>
+
+<!-- Slide 56: Context Sensitivity -->
+<div class="slide">
+  <h2>Context Sensitivity</h2>
+  <div class="cols">
+    <div>
+      <h3>Context-insensitive:</h3>
+      <p>Merge all calls to the same function.</p>
+      <pre><code>helper is called with temp AND y
+=&gt; param could be temp OR y
+=&gt; Result: imprecise</code></pre>
+    </div>
+    <div>
+      <h3>Context-sensitive:</h3>
+      <p>Distinguish calls by their calling context.</p>
+      <pre><code>Context 1: main -&gt; process_data -&gt; helper(temp)
+  =&gt; param = temp = x * 2
+
+Context 2: main -&gt; process_data -&gt; helper(y)
+  =&gt; param = y
+
+=&gt; Result: precise, but expensive</code></pre>
+    </div>
+  </div>
+</div>
+
+<!-- Slide 57: Scalability Trade-offs -->
+<div class="slide">
+  <h2>Scalability Trade-offs</h2>
+  <div class="diagram">Precision
+    ^
+    |   * Full context-sensitive
+    |      (exponential cost)
+    |
+    |         * k-limited call strings
+    |            (polynomial cost)
+    |
+    |               * Context-insensitive
+    |                  (linear cost)
+    |
+    +-----------------------------------&gt; Scalability</div>
+  <table>
+    <tr><th>Approach</th><th>Precision</th><th>Cost</th><th>Use Case</th></tr>
+    <tr><td>Context-insensitive</td><td>Low</td><td>O(n)</td><td>Quick scanning, millions of LOC</td></tr>
+    <tr><td>1-level context</td><td>Medium</td><td>O(n * k)</td><td>Industrial tools (Infer, Coverity)</td></tr>
+    <tr><td>Full context</td><td>High</td><td>O(n * 2^k)</td><td>Small critical components</td></tr>
+    <tr><td>Summary-based</td><td>Medium</td><td>O(n * m)</td><td>Modular analysis, libraries</td></tr>
+  </table>
+</div>
+
+<!-- Slide 58: Summary-Based Analysis -->
+<div class="slide">
+  <h2>Summary-Based Analysis</h2>
+  <p>Instead of re-analyzing a function at every call site, <strong>precompute a summary:</strong></p>
+  <pre><code>let helper param =
+  let local_var = param + 1 in
+  local_var</code></pre>
+  <h3>Summary for helper:</h3>
+  <pre><code>Input:  param (any value)
+Output: param + 1
+Side effects: none
+Defines: local_var (local scope only)
+Kills: nothing external</code></pre>
+  <div class="callout-green">
+    Apply the summary at each call site instead of inlining the function body. This is how real-world tools scale.
+  </div>
+</div>
+
+<!-- Slide 59: Interprocedural Challenges -->
+<div class="slide">
+  <h2>Interprocedural Challenges</h2>
+  <h3>1. Dynamic Dispatch</h3>
+  <pre><code>let process handler data =
+  handler#process data  (* Which process () is called? *)</code></pre>
+  <p>The target depends on the runtime type of <code>handler</code>.</p>
+  <h3>2. Higher-Order Functions</h3>
+  <pre><code>let apply func x =
+  func x  (* func could be anything! *)
+
+let _ = apply sanitize user_input
+let _ = apply (fun x -&gt; x) user_input  (* Not sanitized! *)</code></pre>
+  <h3>3. Recursive Functions</h3>
+  <pre><code>f calls g, g calls f =&gt; cycle in call graph
+=&gt; fixpoint computation on the call graph itself</code></pre>
+</div>
+
+<!-- Slide 60: Hands-On Exercise Overview -->
+<div class="slide">
+  <h2>Hands-On Exercise Overview</h2>
+  <p><strong>Exercise: Build a Mini Reaching Definitions Analyzer</strong></p>
+  <pre><code>(* Given this target program: *)
+let target () =
+  let x = 1 in          (* d1 *)
+  let y = 2 in          (* d2 *)
+  let x =
+    if condition then
+      y + 3              (* d3 *)
+    else x
+  in
+  let z = x + y in      (* uses x, y *)
+  z</code></pre>
+  <p>Tasks:</p>
+  <ol>
+    <li>Build the CFG (identify basic blocks, draw edges)</li>
+    <li>Compute gen/kill sets for each block</li>
+    <li>Run fixpoint iteration by hand (fill in the table)</li>
+    <li>Implement the analysis in OCaml</li>
+    <li>Verify your manual results match the code output</li>
+  </ol>
+</div>
+
+<!-- Slide 61: Exercise: Analysis Comparison -->
+<div class="slide">
+  <h2>Exercise: Analysis Comparison</h2>
+  <p>Apply all three analyses to one program:</p>
+  <pre><code>let multi_analysis () =
+  let a = x + y in       (* S1 *)
+  let b = a * 2 in       (* S2 *)
+  let a =
+    if condition then
+      let c = x + y in   (* S3 (repeated expression) *)
+      c + 1               (* S4 (redefines a) *)
+    else a
+  in
+  print_int a;            (* S5 *)
+  let d = b + a in        (* S6 *)
+  d</code></pre>
+  <table>
+    <tr><th>Analysis</th><th>What to compute</th></tr>
+    <tr><td>Reaching Definitions</td><td>Which assignments reach each statement?</td></tr>
+    <tr><td>Live Variables</td><td>Which variables are live at each point?</td></tr>
+    <tr><td>Available Expressions</td><td>Which expressions can be reused?</td></tr>
+  </table>
+  <p>Fill in the comparison table and identify optimization opportunities.</p>
+</div>
+
+<!-- Slide 62: Key Takeaways -->
+<div class="slide">
+  <h2>Key Takeaways</h2>
+  <div class="cols">
+    <div>
+      <h3>Foundational Concepts:</h3>
+      <ul>
+        <li><strong>CFGs</strong> transform linear code into directed graphs capturing all execution paths</li>
+        <li><strong>Basic blocks</strong> group always-together statements, simplifying analysis</li>
+        <li><strong>Dataflow analysis</strong> systematically propagates facts along CFG edges</li>
+      </ul>
+    </div>
+    <div>
+      <h3>The Framework:</h3>
+      <ul>
+        <li><strong>Lattices</strong> define what we track and how to combine information</li>
+        <li><strong>Transfer functions</strong> model how statements change tracked information</li>
+        <li><strong>Fixpoint iteration</strong> finds the stable, correct solution</li>
+      </ul>
+    </div>
+  </div>
+  <div class="callout-green" style="margin-top:16px;">
+    <h3>Analysis Diversity:</h3>
+    <ul>
+      <li>Forward vs backward matches the reasoning direction</li>
+      <li>May (union) vs must (intersection) reflects safety requirements</li>
+      <li>The same framework powers many different analyses</li>
+    </ul>
+  </div>
+</div>
+
+<!-- Slide 63: Common Pitfalls -->
+<div class="slide">
+  <h2>Common Pitfalls</h2>
+  <ol>
+    <li><strong>Confusing gen and kill sets</strong> -- gen is what a block creates, kill is what it destroys</li>
+    <li><strong>Wrong merge operator</strong> -- union for "may" analyses, intersection for "must" analyses</li>
+    <li><strong>Forgetting back edges</strong> -- loops create cycles; the fixpoint handles them</li>
+    <li><strong>Stopping iteration too early</strong> -- must check ALL blocks for stability, not just the last</li>
+    <li><strong>Mixing up IN and OUT</strong> -- IN is at block entry, OUT is at block exit</li>
+    <li><strong>Ignoring initialization</strong> -- must analyses start at top (universal set), may analyses at bottom (empty set)</li>
+  </ol>
+</div>
+
+<!-- Slide 64: Next Module Preview -->
+<div class="slide">
+  <h2>Next Module Preview</h2>
+  <h3>Module 4: Dynamic Analysis and Runtime Techniques</h3>
+  <ul>
+    <li>Dynamic instrumentation and execution traces</li>
+    <li>Runtime profiling and performance analysis</li>
+    <li>Combining static + dynamic analysis (hybrid approaches)</li>
+    <li>Fuzzing and automated test generation</li>
+  </ul>
+  <div class="callout-blue">
+    <strong>Prep:</strong> Review Module 3 concepts, especially:
+    <ul>
+      <li>Where static analysis hits its limits (aliasing, dynamic dispatch)</li>
+      <li>Why runtime information can complement static results</li>
+      <li>Practice manual fixpoint computation on complex CFGs</li>
+    </ul>
+  </div>
+</div>
+
+<!-- Slide 65: Additional Resources -->
+<div class="slide">
+  <h2>Additional Resources</h2>
+  <h3>Primary Reading:</h3>
+  <ul>
+    <li><a href="https://cs.au.dk/~amoeller/spa/" style="color:var(--blue);">Static Program Analysis</a> -- Moeller &amp; Schwartzbach (free online)</li>
+    <li>Chapters 1-4 cover CFGs, dataflow, and reaching definitions</li>
+  </ul>
+  <h3>Practice:</h3>
+  <ul>
+    <li>Implement the reaching definitions analyzer from the exercise</li>
+    <li>Try adding available expressions to the same framework</li>
+    <li>Construct CFGs for your own OCaml functions</li>
+  </ul>
+  <h3>Review:</h3>
+  <ul>
+    <li>Set theory: union, intersection, difference, powerset</li>
+    <li>Graph algorithms: BFS, DFS, topological sort</li>
+    <li>Fixpoint theory: monotone functions on lattices</li>
+  </ul>
+</div>
+
+<!-- Slide 66: Summary: The Big Picture -->
+<div class="slide">
+  <h2>Summary: The Big Picture</h2>
+  <div class="diagram">Source Code
+    |
+    v
+  [AST]          Module 2: Structure
+    |
+    v
+  [CFG]          Module 3: Control flow (today)
+    |
+    v
+  [Dataflow]     Module 3: Property computation (today)
+    |
+    v
+  [Results]      "Variable x may be uninitialized"
+    |             "Expression a+b is redundant"
+    v             "Definition d3 is dead code"
+  [Action]       Fix the bug / optimize the code</div>
+  <div class="callout-green">
+    Static analysis turns <strong>code</strong> into <strong>actionable knowledge</strong>, automatically and at scale.
+  </div>
+</div>
+
+</div><!-- end .deck -->
+
+<div class="nav">
+  <button id="prev" onclick="go(-1)">&larr; Prev</button>
+  <button id="next" onclick="go(1)">Next &rarr;</button>
+</div>
+<div class="counter" id="counter"></div>
+
+<script>
+  let cur = 0;
+  const slides = document.querySelectorAll('.slide');
+  const total = slides.length;
+  function show(n) {
+    slides.forEach(s => s.classList.remove('active'));
+    cur = Math.max(0, Math.min(n, total - 1));
+    slides[cur].classList.add('active');
+    document.getElementById('prev').disabled = cur === 0;
+    document.getElementById('next').disabled = cur === total - 1;
+    document.getElementById('counter').textContent = (cur + 1) + ' / ' + total;
+    document.getElementById('progress').style.width = ((cur + 1) / total * 100) + '%';
+  }
+  function go(d) { show(cur + d); }
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); go(1); }
+    if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); go(-1); }
+    if (e.key === 'Home') { e.preventDefault(); show(0); }
+    if (e.key === 'End') { e.preventDefault(); show(total - 1); }
+  });
+  let tx = 0;
+  document.addEventListener('touchstart', e => { tx = e.touches[0].clientX; });
+  document.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - tx;
+    if (Math.abs(dx) > 50) go(dx < 0 ? 1 : -1);
+  });
+  show(0);
+</script>
+</body>
+</html>

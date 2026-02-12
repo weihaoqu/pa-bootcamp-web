@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Module 1: Foundations of Program Analysis</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --fg: #1a1a2e;
+    --accent: #e94560;
+    --accent2: #0f3460;
+    --accent3: #16213e;
+    --code-bg: #f4f4f8;
+    --border: #ddd;
+    --shadow: rgba(0,0,0,0.08);
+    --green: #27ae60;
+    --orange: #f39c12;
+    --red: #e74c3c;
+    --blue: #2980b9;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: #f0f0f5;
+    color: var(--fg);
+    overflow: hidden;
+    height: 100vh;
+  }
+  .deck { position: relative; width: 100vw; height: 100vh; }
+  .slide {
+    display: none;
+    position: absolute;
+    inset: 0;
+    padding: 48px 64px;
+    background: var(--bg);
+    overflow-y: auto;
+    animation: fadeIn 0.3s ease;
+  }
+  .slide.active { display: flex; flex-direction: column; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: none; } }
+  h1 { font-size: 2.8em; color: var(--accent2); margin-bottom: 8px; font-weight: 700; }
+  h2 { font-size: 2em; color: var(--accent2); margin-bottom: 16px; border-bottom: 3px solid var(--accent); padding-bottom: 8px; display: inline-block; }
+  h3 { font-size: 1.3em; color: var(--accent3); margin: 12px 0 6px; }
+  p, li { font-size: 1.15em; line-height: 1.6; margin-bottom: 8px; }
+  ul, ol { padding-left: 28px; }
+  strong { color: var(--accent2); }
+  em { color: var(--accent); font-style: normal; font-weight: 600; }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    font-size: 0.95em;
+    line-height: 1.5;
+    overflow-x: auto;
+    margin: 12px 0;
+    font-family: 'JetBrains Mono', 'Fira Code', 'SF Mono', monospace;
+  }
+  code {
+    font-family: 'JetBrains Mono', 'Fira Code', 'SF Mono', monospace;
+    background: var(--code-bg);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.9em;
+  }
+  pre code { background: none; padding: 0; }
+  table { border-collapse: collapse; margin: 12px 0; font-size: 1em; width: auto; }
+  th, td { border: 1px solid var(--border); padding: 8px 14px; text-align: left; }
+  th { background: var(--accent2); color: white; font-weight: 600; }
+  tr:nth-child(even) { background: #f8f8fc; }
+  .diagram {
+    background: var(--code-bg);
+    border: 2px solid var(--accent2);
+    border-radius: 8px;
+    padding: 20px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.95em;
+    line-height: 1.6;
+    white-space: pre;
+    margin: 12px 0;
+    overflow-x: auto;
+  }
+  .callout {
+    border-left: 4px solid var(--accent);
+    background: #fff5f7;
+    padding: 12px 16px;
+    margin: 12px 0;
+    border-radius: 0 8px 8px 0;
+  }
+  .callout-green {
+    border-left: 4px solid var(--green);
+    background: #f0faf4;
+    padding: 12px 16px;
+    margin: 12px 0;
+    border-radius: 0 8px 8px 0;
+  }
+  .callout-blue {
+    border-left: 4px solid var(--blue);
+    background: #f0f6ff;
+    padding: 12px 16px;
+    margin: 12px 0;
+    border-radius: 0 8px 8px 0;
+  }
+  .cols { display: flex; gap: 32px; flex: 1; }
+  .cols > div { flex: 1; }
+  .title-slide {
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    background: linear-gradient(135deg, var(--accent2) 0%, var(--accent3) 100%);
+    color: white;
+  }
+  .title-slide h1 { color: white; font-size: 3.5em; border: none; }
+  .title-slide h2 { color: rgba(255,255,255,0.85); border: none; font-size: 1.6em; font-weight: 400; }
+  .nav {
+    position: fixed;
+    bottom: 20px;
+    right: 24px;
+    display: flex;
+    gap: 8px;
+    z-index: 100;
+  }
+  .nav button {
+    background: var(--accent2);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 10px 20px;
+    font-size: 1em;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .nav button:hover { background: var(--accent); }
+  .nav button:disabled { opacity: 0.3; cursor: default; }
+  .counter {
+    position: fixed;
+    bottom: 24px;
+    left: 24px;
+    font-size: 0.9em;
+    color: #888;
+    z-index: 100;
+  }
+  .progress {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 4px;
+    background: var(--accent);
+    transition: width 0.3s ease;
+    z-index: 100;
+  }
+  .badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 0.85em;
+    font-weight: 600;
+    color: white;
+  }
+  .badge-critical { background: var(--red); }
+  .badge-high { background: var(--orange); }
+  .badge-medium { background: var(--blue); }
+</style>
+</head>
+<body>
+
+<div class="progress" id="progress"></div>
+<div class="counter" id="counter"></div>
+
+<div class="deck" id="deck">
+
+<!-- Slide 1: Title -->
+<div class="slide title-slide">
+  <h1>Program Analysis for Beginners</h1>
+  <h2>Module 1: Foundations of Program Analysis</h2>
+  <p style="margin-top: 24px; font-size: 1.2em; color: rgba(255,255,255,0.7);">
+    <strong style="color: rgba(255,255,255,0.9);">Instructor:</strong> Weihao<br>
+    <strong style="color: rgba(255,255,255,0.9);">Office Hours:</strong> By appointment, HH227
+  </p>
+</div>
+
+<!-- Slide 2: Learning Objectives -->
+<div class="slide">
+  <h2>Learning Objectives</h2>
+  <p>By the end of this module, you will be able to:</p>
+  <ul>
+    <li><strong>Define</strong> program analysis and distinguish between static and dynamic approaches</li>
+    <li><strong>Classify</strong> different types of program analysis techniques by their goals</li>
+    <li><strong>Evaluate</strong> the trade-offs between soundness, completeness, and performance</li>
+    <li><strong>Apply</strong> basic analysis concepts to simple code examples</li>
+  </ul>
+</div>
+
+<!-- Slide 3: What is Program Analysis? -->
+<div class="slide">
+  <h2>What is Program Analysis?</h2>
+  <p><strong>Program Analysis</strong> is the process of automatically analyzing the behavior of computer programs.</p>
+  <ul>
+    <li><strong>Goal:</strong> Understand what a program does without (necessarily) executing it</li>
+    <li><strong>Purpose:</strong> Find bugs, optimize performance, verify correctness</li>
+    <li><strong>Scope:</strong> From simple syntax checking to complex security analysis</li>
+  </ul>
+</div>
+
+<!-- Slide 4: Why Do We Need Program Analysis? -->
+<div class="slide">
+  <h2>Why Do We Need Program Analysis?</h2>
+  <div class="callout">
+    <p><strong>Problem:</strong> Manual code review doesn't scale</p>
+  </div>
+  <ul>
+    <li>Modern software has millions of lines of code</li>
+    <li>Human reviewers miss subtle bugs</li>
+    <li>Security vulnerabilities can hide in complex logic</li>
+  </ul>
+  <div class="callout-green">
+    <p><strong>Solution:</strong> Automated analysis tools can systematically examine code</p>
+  </div>
+</div>
+
+<!-- Slide 5: Real-World Failures -->
+<div class="slide">
+  <h2>Real-World Failures</h2>
+  <table>
+    <tr><th>Incident</th><th>Year</th><th>Root Cause</th><th>Cost</th></tr>
+    <tr><td>Ariane 5 Explosion</td><td>1996</td><td>Integer overflow</td><td>$370M</td></tr>
+    <tr><td>Knight Capital</td><td>2012</td><td>Dead code activation</td><td>$440M</td></tr>
+    <tr><td>Heartbleed</td><td>2014</td><td>Buffer over-read</td><td>Billions</td></tr>
+    <tr><td>Boeing 737 MAX</td><td>2018</td><td>Sensor logic error</td><td>$20B+</td></tr>
+    <tr><td>SolarWinds</td><td>2020</td><td>Supply chain attack</td><td>$100M+</td></tr>
+  </table>
+  <div class="callout-blue">
+    <p>Program analysis could have detected these issues.</p>
+  </div>
+</div>
+
+<!-- Slide 6: Real-World Impact -->
+<div class="slide">
+  <h2>Real-World Impact</h2>
+  <p>Program analysis powers tools you use daily:</p>
+  <ul>
+    <li><strong>IDEs:</strong> IntelliSense, error highlighting, refactoring</li>
+    <li><strong>Compilers:</strong> Dead code elimination, optimization</li>
+    <li><strong>Security:</strong> Vulnerability scanners, malware detection</li>
+    <li><strong>DevOps:</strong> Static analysis in CI/CD pipelines</li>
+  </ul>
+</div>
+
+<!-- Slide 7: Two Main Approaches -->
+<div class="slide">
+  <h2>Two Main Approaches</h2>
+  <div class="diagram">Program Analysis
+&#9500;&#9472;&#9472; Static Analysis
+&#9474;   &#9492;&#9472;&#9472; Analyzes code without running it
+&#9492;&#9472;&#9472; Dynamic Analysis
+    &#9492;&#9472;&#9472; Analyzes program during execution</div>
+  <p>Each approach has different strengths and limitations.</p>
+</div>
+
+<!-- Slide 8: Static Analysis Overview -->
+<div class="slide">
+  <h2>Static Analysis Overview</h2>
+  <p><strong>Examines code structure and syntax without execution</strong></p>
+  <ul>
+    <li>Analyzes source code, bytecode, or binary</li>
+    <li>Can catch errors before runtime</li>
+    <li>No need for test inputs or execution environment</li>
+  </ul>
+  <div class="callout-blue">
+    <p><strong>Example:</strong> Checking for null pointer dereferences</p>
+  </div>
+</div>
+
+<!-- Slide 9: Static Analysis Example -->
+<div class="slide">
+  <h2>Static Analysis Example</h2>
+  <pre><code>public void processUser(User user) {
+    if (user.getName() != null) {
+        System.out.println("Processing: " + user.getName());
+    }
+
+    // Static analysis can detect this potential issue
+    int nameLength = user.getName().length(); // Possible NPE!
+}</code></pre>
+  <div class="callout">
+    <p><strong>Detection:</strong> Tool identifies potential null pointer exception</p>
+  </div>
+</div>
+
+<!-- Slide 10: Dynamic Analysis Overview -->
+<div class="slide">
+  <h2>Dynamic Analysis Overview</h2>
+  <p><strong>Observes program behavior during actual execution</strong></p>
+  <ul>
+    <li>Requires running the program with test inputs</li>
+    <li>Can catch runtime-specific issues</li>
+    <li>Sees actual execution paths and values</li>
+  </ul>
+  <div class="callout-blue">
+    <p><strong>Example:</strong> Detecting memory leaks during program execution</p>
+  </div>
+</div>
+
+<!-- Slide 11: Dynamic Analysis Example -->
+<div class="slide">
+  <h2>Dynamic Analysis Example</h2>
+  <pre><code>let rec fibonacci n =
+  if n &lt;= 1 then n
+  else fibonacci (n - 1) + fibonacci (n - 2)
+
+(* Dynamic analysis during execution *)
+let result = fibonacci 40  (* Tool measures: 2.5 seconds, high CPU usage *)</code></pre>
+  <div class="callout">
+    <p><strong>Detection:</strong> Tool identifies performance bottleneck with real metrics</p>
+  </div>
+</div>
+
+<!-- Slide 12: Static vs Dynamic: Comparison -->
+<div class="slide">
+  <h2>Static vs Dynamic: Comparison</h2>
+  <table>
+    <tr><th>Aspect</th><th>Static Analysis</th><th>Dynamic Analysis</th></tr>
+    <tr><td><strong>Execution</strong></td><td>No execution needed</td><td>Requires running code</td></tr>
+    <tr><td><strong>Coverage</strong></td><td>All possible paths</td><td>Only executed paths</td></tr>
+    <tr><td><strong>Speed</strong></td><td>Generally faster</td><td>Depends on execution time</td></tr>
+    <tr><td><strong>False Positives</strong></td><td>More common</td><td>Fewer, but false negatives possible</td></tr>
+  </table>
+</div>
+
+<!-- Slide 13: Three Core Objectives -->
+<div class="slide">
+  <h2>Three Core Objectives</h2>
+  <p><strong>By Purpose:</strong></p>
+  <ul>
+    <li><strong>Correctness:</strong> Find bugs, verify specifications</li>
+    <li><strong>Security:</strong> Detect vulnerabilities, analyze threats</li>
+    <li><strong>Performance:</strong> Identify bottlenecks, optimize code</li>
+  </ul>
+  <p>Each objective benefits from different analysis techniques.</p>
+</div>
+
+<!-- Slide 14: Core Concept: Soundness -->
+<div class="slide">
+  <h2>Core Concept: Soundness</h2>
+  <p><strong>Sound Analysis:</strong> Never misses real issues</p>
+  <ul>
+    <li>If analysis says "no bugs found," there truly are no bugs</li>
+    <li>May report false positives (issues that aren't real)</li>
+    <li>Conservative approach: "better safe than sorry"</li>
+  </ul>
+  <div class="callout-green">
+    <p><strong>Sound:</strong> All real bugs are reported<br>(but some reports may be false alarms)</p>
+  </div>
+</div>
+
+<!-- Slide 15: Core Concept: Completeness -->
+<div class="slide">
+  <h2>Core Concept: Completeness</h2>
+  <p><strong>Complete Analysis:</strong> Never reports false positives</p>
+  <ul>
+    <li>If analysis reports a bug, it's definitely a real bug</li>
+    <li>May miss some actual issues (false negatives)</li>
+    <li>Precise approach: "only report what's certain"</li>
+  </ul>
+  <div class="callout-blue">
+    <p><strong>Complete:</strong> All reported bugs are real<br>(but some real bugs may be missed)</p>
+  </div>
+</div>
+
+<!-- Slide 16: The Fundamental Trade-off -->
+<div class="slide">
+  <h2>The Fundamental Trade-off</h2>
+  <div class="diagram">         Soundness
+             &#8593;
+             |
+   False &#8592;&#9472;&#9472;&#9472;&#9532;&#9472;&#9472;&#9472;&#8594; Accurate
+Positives    |     Analysis
+             |
+             &#8595;
+        Completeness</div>
+  <div class="callout">
+    <p><strong>Rice's Theorem:</strong> You cannot have perfect soundness AND completeness for non-trivial program properties.</p>
+  </div>
+</div>
+
+<!-- Slide 17: Analysis Scope Levels -->
+<div class="slide">
+  <h2>Analysis Scope Levels</h2>
+  <div class="diagram">Program Analysis Scope
+&#9500;&#9472;&#9472; Intraprocedural
+&#9474;   &#9492;&#9472;&#9472; Within single functions/methods
+&#9500;&#9472;&#9472; Interprocedural
+&#9474;   &#9492;&#9472;&#9472; Across function calls
+&#9492;&#9472;&#9472; Whole-Program
+    &#9492;&#9472;&#9472; Entire application analysis</div>
+  <div class="callout-blue">
+    <p>Broader scope = more accurate but more expensive</p>
+  </div>
+</div>
+
+<!-- Slide 18: Intraprocedural Analysis -->
+<div class="slide">
+  <h2>Intraprocedural Analysis</h2>
+  <p><strong>Analyzes individual functions in isolation</strong></p>
+  <ul>
+    <li>Fast and scalable</li>
+    <li>Detects local issues: uninitialized variables, dead code, basic logic errors</li>
+    <li>Cannot track data across function boundaries</li>
+  </ul>
+  <pre><code>let example x =
+  let y = 10 in
+  if x &gt; 0 then y
+  else begin
+    print_int y;
+    0
+  end</code></pre>
+</div>
+
+<!-- Slide 19: Interprocedural Analysis -->
+<div class="slide">
+  <h2>Interprocedural Analysis</h2>
+  <p><strong>Tracks information across function calls</strong></p>
+  <ul>
+    <li>More precise for security and resource analysis</li>
+    <li>Higher computational cost</li>
+    <li>Essential for taint tracking and vulnerability detection</li>
+  </ul>
+  <pre><code>let sanitize input =
+  String.concat "''" (String.split_on_char '\'' input)
+
+let query user_input =
+  let safe = sanitize user_input in
+  Db.execute (Printf.sprintf "SELECT * FROM users WHERE name = '%s'" safe)
+  (* Interprocedural: tracks sanitize() effect *)</code></pre>
+</div>
+
+<!-- Slide 20: Modern Analysis Ecosystem -->
+<div class="slide">
+  <h2>Modern Analysis Ecosystem</h2>
+  <p><strong>Integration Points:</strong></p>
+  <ul>
+    <li><strong>Development:</strong> IDE plugins, linters</li>
+    <li><strong>Build Process:</strong> Compiler warnings, static checkers</li>
+    <li><strong>CI/CD:</strong> Automated security scans, quality gates</li>
+    <li><strong>Production:</strong> Runtime monitoring, profiling</li>
+  </ul>
+  <div class="diagram">Code &#8594; IDE Check &#8594; Build &#8594; CI/CD Gate &#8594; Deploy &#8594; Monitor
+       &#8593;           &#8593;        &#8593;                     &#8593;
+     Static     Static   Static+Dynamic        Dynamic</div>
+</div>
+
+<!-- Slide 21: SDLC Integration (Early Phases) -->
+<div class="slide">
+  <h2>SDLC Integration (Early Phases)</h2>
+  <table>
+    <tr><th>Phase</th><th>Analysis Type</th><th>Example Tools</th></tr>
+    <tr><td>Design</td><td>Threat modeling</td><td>STRIDE, Attack trees</td></tr>
+    <tr><td>Development</td><td>Linting, type checking</td><td>ESLint, mypy, TypeScript</td></tr>
+    <tr><td>Testing</td><td>Coverage, fuzzing</td><td>pytest-cov, AFL</td></tr>
+  </table>
+  <div class="callout-green">
+    <p><strong>Key insight:</strong> Earlier detection = cheaper fixes</p>
+  </div>
+</div>
+
+<!-- Slide 22: SDLC Integration (Late Phases) -->
+<div class="slide">
+  <h2>SDLC Integration (Late Phases)</h2>
+  <table>
+    <tr><th>Phase</th><th>Analysis Type</th><th>Example Tools</th></tr>
+    <tr><td>Deployment</td><td>Security scanning</td><td>SonarQube, Semgrep</td></tr>
+    <tr><td>Production</td><td>Monitoring, profiling</td><td>APM tools, Valgrind</td></tr>
+  </table>
+  <div class="callout-blue">
+    <p>Analysis should be applied at <strong>every stage</strong> of development.</p>
+  </div>
+</div>
+
+<!-- Slide 23: Analysis Goals Taxonomy -->
+<div class="slide">
+  <h2>Analysis Goals Taxonomy</h2>
+  <ul>
+    <li><strong>Correctness</strong> -- Type errors, null dereferences, logic errors</li>
+    <li><strong>Security</strong> -- SQL injection, XSS, buffer overflow</li>
+    <li><strong>Performance</strong> -- Memory leaks, algorithmic complexity, resource contention</li>
+  </ul>
+</div>
+
+<!-- Slide 24: Program Analysis vs. Testing vs. Debugging -->
+<div class="slide">
+  <h2>Program Analysis vs. Testing vs. Debugging</h2>
+  <ul>
+    <li><strong>Testing:</strong> Runs selected paths with test cases to find failures</li>
+    <li><strong>Debugging:</strong> Traces a single failure path to find the root cause</li>
+    <li><strong>Program Analysis:</strong> Examines all paths from source code to find all issues</li>
+  </ul>
+  <div class="callout-green">
+    <p>They are <strong>complementary</strong>, not competing approaches.</p>
+  </div>
+</div>
+
+<!-- Slide 25: Hands-On Exercise -->
+<div class="slide">
+  <h2>Hands-On Exercise (25 minutes)</h2>
+  <p><strong>Objective:</strong> Compare static vs dynamic analysis on the same code</p>
+  <p><strong>Task:</strong> Analyze the provided buggy calculator program using:</p>
+  <ol>
+    <li>Static analysis tool (ESLint)</li>
+    <li>Dynamic analysis (running tests)</li>
+  </ol>
+  <p><strong>Repository:</strong> <code>exercises/calculator-bugs/</code></p>
+  <p><strong>Deliverable:</strong> Report comparing findings from both approaches</p>
+</div>
+
+<!-- Slide 26: Exercise: Setup & Static Analysis -->
+<div class="slide">
+  <h2>Exercise: Setup &amp; Static Analysis</h2>
+  <ol>
+    <li><strong>Setup:</strong> <code>cd exercises/calculator-bugs/starter &amp;&amp; npm install</code></li>
+    <li><strong>Static Analysis:</strong>
+      <ul>
+        <li>Run <code>npx eslint calculator.js</code></li>
+        <li>Document all warnings/errors found</li>
+      </ul>
+    </li>
+  </ol>
+</div>
+
+<!-- Slide 27: Exercise: Dynamic Analysis & Comparison -->
+<div class="slide">
+  <h2>Exercise: Dynamic Analysis &amp; Comparison</h2>
+  <ol start="3">
+    <li><strong>Dynamic Analysis:</strong>
+      <ul>
+        <li>Run <code>node test-calculator.js</code></li>
+        <li>Document runtime issues discovered</li>
+      </ul>
+    </li>
+    <li><strong>Compare:</strong> Which issues did each approach catch?</li>
+  </ol>
+</div>
+
+<!-- Slide 28: Solution Review -->
+<div class="slide">
+  <h2>Solution Review</h2>
+  <div class="cols">
+    <div>
+      <h3>Static Analysis Findings</h3>
+      <ul>
+        <li>Undefined variable usage</li>
+        <li>Unreachable code after return</li>
+        <li>Switch statement fallthrough</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Dynamic Analysis Findings</h3>
+      <ul>
+        <li>Division by zero runtime error</li>
+        <li>Infinite recursion with specific inputs</li>
+        <li>Type coercion producing wrong results</li>
+      </ul>
+    </div>
+  </div>
+  <div class="callout-green">
+    <p><strong>Key Insight:</strong> Complementary approaches catch different issue types</p>
+  </div>
+</div>
+
+<!-- Slide 29: Key Takeaways -->
+<div class="slide">
+  <h2>Key Takeaways</h2>
+  <ul>
+    <li><strong>Program analysis automates</strong> code understanding and bug detection</li>
+    <li><strong>Static analysis</strong> examines code structure; <strong>dynamic analysis</strong> observes execution</li>
+    <li><strong>Perfect analysis is impossible</strong> due to theoretical limitations</li>
+    <li><strong>Trade-offs exist</strong> between soundness, completeness, and performance</li>
+    <li><strong>Modern development relies</strong> on analysis tools at every stage</li>
+  </ul>
+</div>
+
+<!-- Slide 30: Next Session Preview -->
+<div class="slide">
+  <h2>Next Session Preview</h2>
+  <h3>Module 2: Code Representation and Abstract Syntax Trees</h3>
+  <ul>
+    <li>How programs are represented internally</li>
+    <li>Building and traversing ASTs</li>
+    <li>Hands-on: Writing your first code transformer</li>
+  </ul>
+  <div class="callout-blue">
+    <p><strong>Prep:</strong> Review basic tree data structures</p>
+  </div>
+</div>
+
+<!-- Slide 31: Questions & Discussion -->
+<div class="slide">
+  <h2>Questions &amp; Discussion</h2>
+  <p><strong>Discussion Prompts:</strong></p>
+  <ul>
+    <li>When would you prefer static vs dynamic analysis?</li>
+    <li>What program analysis tools have you used?</li>
+    <li>What types of bugs are hardest for humans to find?</li>
+  </ul>
+  <p style="margin-top: 24px;"><strong>Office Hours:</strong> By appointment, HH227</p>
+  <p><strong>Resources:</strong> Course GitHub repository</p>
+</div>
+
+</div><!-- /deck -->
+
+<div class="nav">
+  <button id="prev" onclick="go(-1)">&larr; Prev</button>
+  <button id="next" onclick="go(1)">Next &rarr;</button>
+</div>
+
+<script>
+  let cur = 0;
+  const slides = document.querySelectorAll('.slide');
+  const total = slides.length;
+
+  function show(n) {
+    slides.forEach(s => s.classList.remove('active'));
+    cur = Math.max(0, Math.min(n, total - 1));
+    slides[cur].classList.add('active');
+    document.getElementById('prev').disabled = cur === 0;
+    document.getElementById('next').disabled = cur === total - 1;
+    document.getElementById('counter').textContent = (cur + 1) + ' / ' + total;
+    document.getElementById('progress').style.width = ((cur + 1) / total * 100) + '%';
+  }
+
+  function go(d) { show(cur + d); }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); go(1); }
+    if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); go(-1); }
+    if (e.key === 'Home') { e.preventDefault(); show(0); }
+    if (e.key === 'End') { e.preventDefault(); show(total - 1); }
+  });
+
+  let tx = 0;
+  document.addEventListener('touchstart', e => { tx = e.touches[0].clientX; });
+  document.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - tx;
+    if (Math.abs(dx) > 50) go(dx < 0 ? 1 : -1);
+  });
+
+  show(0);
+</script>
+</body>
+</html>

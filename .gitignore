@@ -40,6 +40,7 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# synced content (populated by scripts/sync-content.sh)
-/content/
-/public/slides/*.html
+# synced content — committed to repo for Docker builds
+# Run scripts/sync-content.sh locally to refresh from bootcamp repos
+# /content/
+# /public/slides/*.html

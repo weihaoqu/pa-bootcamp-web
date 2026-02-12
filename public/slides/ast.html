@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Module 2: Code Representation and ASTs</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --fg: #1a1a2e;
+    --accent: #e94560;
+    --accent2: #0f3460;
+    --accent3: #16213e;
+    --code-bg: #f4f4f8;
+    --border: #ddd;
+    --shadow: rgba(0,0,0,0.08);
+    --green: #27ae60;
+    --orange: #f39c12;
+    --red: #e74c3c;
+    --blue: #2980b9;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: #f0f0f5;
+    color: var(--fg);
+    overflow: hidden;
+    height: 100vh;
+  }
+  .deck { position: relative; width: 100vw; height: 100vh; }
+  .slide {
+    display: none;
+    position: absolute;
+    inset: 0;
+    padding: 48px 64px;
+    background: var(--bg);
+    overflow-y: auto;
+    animation: fadeIn 0.3s ease;
+  }
+  .slide.active { display: flex; flex-direction: column; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: none; } }
+  h1 { font-size: 2.8em; color: var(--accent2); margin-bottom: 8px; font-weight: 700; }
+  h2 { font-size: 2em; color: var(--accent2); margin-bottom: 16px; border-bottom: 3px solid var(--accent); padding-bottom: 8px; display: inline-block; }
+  h3 { font-size: 1.3em; color: var(--accent3); margin: 12px 0 6px; }
+  p, li { font-size: 1.15em; line-height: 1.6; margin-bottom: 8px; }
+  ul, ol { padding-left: 28px; }
+  strong { color: var(--accent2); }
+  em { color: var(--accent); font-style: normal; font-weight: 600; }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    font-size: 0.95em;
+    line-height: 1.5;
+    overflow-x: auto;
+    margin: 12px 0;
+    font-family: 'JetBrains Mono', 'Fira Code', 'SF Mono', monospace;
+  }
+  code {
+    font-family: 'JetBrains Mono', 'Fira Code', 'SF Mono', monospace;
+    background: var(--code-bg);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.9em;
+  }
+  pre code { background: none; padding: 0; }
+  table { border-collapse: collapse; margin: 12px 0; font-size: 1em; width: auto; }
+  th, td { border: 1px solid var(--border); padding: 8px 14px; text-align: left; }
+  th { background: var(--accent2); color: white; font-weight: 600; }
+  tr:nth-child(even) { background: #f8f8fc; }
+  .diagram {
+    background: var(--code-bg);
+    border: 2px solid var(--accent2);
+    border-radius: 8px;
+    padding: 20px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.95em;
+    line-height: 1.6;
+    white-space: pre;
+    margin: 12px 0;
+    overflow-x: auto;
+  }
+  .callout {
+    border-left: 4px solid var(--accent);
+    background: #fff5f7;
+    padding: 12px 16px;
+    margin: 12px 0;
+    border-radius: 0 8px 8px 0;
+  }
+  .callout-green {
+    border-left: 4px solid var(--green);
+    background: #f0faf4;
+    padding: 12px 16px;
+    margin: 12px 0;
+    border-radius: 0 8px 8px 0;
+  }
+  .callout-blue {
+    border-left: 4px solid var(--blue);
+    background: #f0f6ff;
+    padding: 12px 16px;
+    margin: 12px 0;
+    border-radius: 0 8px 8px 0;
+  }
+  .cols { display: flex; gap: 32px; flex: 1; }
+  .cols > div { flex: 1; }
+  .title-slide {
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    background: linear-gradient(135deg, var(--accent2) 0%, var(--accent3) 100%);
+    color: white;
+  }
+  .title-slide h1 { color: white; font-size: 3.5em; border: none; }
+  .title-slide h2 { color: rgba(255,255,255,0.85); border: none; font-size: 1.6em; font-weight: 400; }
+  .title-slide p { color: rgba(255,255,255,0.7); }
+  .nav {
+    position: fixed;
+    bottom: 20px;
+    right: 24px;
+    display: flex;
+    gap: 8px;
+    z-index: 100;
+  }
+  .nav button {
+    background: var(--accent2);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 10px 20px;
+    font-size: 1em;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .nav button:hover { background: var(--accent); }
+  .nav button:disabled { opacity: 0.3; cursor: default; }
+  .counter {
+    position: fixed;
+    bottom: 24px;
+    left: 24px;
+    font-size: 0.9em;
+    color: #888;
+    z-index: 100;
+  }
+  .progress {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 4px;
+    background: var(--accent);
+    transition: width 0.3s ease;
+    z-index: 100;
+  }
+  .badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 0.85em;
+    font-weight: 600;
+    color: white;
+  }
+  .badge-critical { background: var(--red); }
+  .badge-high { background: var(--orange); }
+  .badge-medium { background: var(--blue); }
+</style>
+</head>
+<body>
+<div class="progress" id="progress"></div>
+<div class="counter" id="counter"></div>
+<div class="deck" id="deck">
+
+<!-- Slide 1: Title -->
+<div class="slide title-slide">
+  <h1>Code Representation and ASTs</h1>
+  <h2>Module 2 &mdash; Program Analysis Bootcamp</h2>
+  <p><strong>Instructor:</strong> Weihao &nbsp;|&nbsp; <strong>Office Hours:</strong> By appointment, HH227</p>
+</div>
+
+<!-- Slide 2: Learning Objectives -->
+<div class="slide">
+  <h2>Learning Objectives</h2>
+  <ul>
+    <li><strong>Analyze</strong> source code and construct AST representations</li>
+    <li><strong>Implement</strong> traversal algorithms (DFS, BFS, Visitor pattern)</li>
+    <li><strong>Create</strong> symbol tables with nested scope resolution</li>
+    <li><strong>Apply</strong> AST transformations (constant folding, renaming, dead code elimination)</li>
+  </ul>
+</div>
+
+<!-- Slide 3: Why Do We Need ASTs? -->
+<div class="slide">
+  <h2>Why Do We Need ASTs?</h2>
+  <p>Raw source code is just text:</p>
+  <pre><code>let result = (2 + 3) * 4</code></pre>
+  <p>To analyze it systematically, we need <strong>structure</strong>.</p>
+  <div class="callout-blue">
+    <p>ASTs convert flat text into a tree that captures the program's logical organization.</p>
+  </div>
+</div>
+
+<!-- Slide 4: What is an AST? -->
+<div class="slide">
+  <h2>What is an AST?</h2>
+  <p><strong>Abstract Syntax Tree:</strong> A tree representation where:</p>
+  <ul>
+    <li>Each <strong>node</strong> represents a programming construct</li>
+    <li><strong>Edges</strong> represent containment/composition</li>
+    <li><strong>Syntactic noise</strong> (parentheses, semicolons) is removed</li>
+    <li><strong>Semantic structure</strong> is preserved</li>
+  </ul>
+</div>
+
+<!-- Slide 5: AST Example -->
+<div class="slide">
+  <h2>AST Example</h2>
+  <p>Expression: <code>(2 + 3) * 4</code></p>
+  <div class="diagram">        *
+       / \
+      +   4
+     / \
+    2   3</div>
+  <div class="callout-green">
+    <p>The tree structure encodes operator precedence directly.</p>
+  </div>
+</div>
+
+<!-- Slide 6: AST Node Categories: Expressions -->
+<div class="slide">
+  <h2>AST Node Categories: Expressions</h2>
+  <p><strong>Expressions</strong> evaluate to values:</p>
+  <ul>
+    <li><strong>Literals:</strong> <code>42</code>, <code>"hello"</code>, <code>true</code></li>
+    <li><strong>Binary ops:</strong> <code>a + b</code>, <code>x * y</code></li>
+    <li><strong>Unary ops:</strong> <code>-x</code>, <code>!done</code></li>
+    <li><strong>Identifiers:</strong> <code>x</code>, <code>myVar</code></li>
+  </ul>
+</div>
+
+<!-- Slide 7: AST Node Categories: Statements & Declarations -->
+<div class="slide">
+  <h2>AST Node Categories: Statements &amp; Declarations</h2>
+  <div class="cols">
+    <div>
+      <h3>Statements</h3>
+      <p><strong>Statements</strong> perform actions:</p>
+      <ul>
+        <li><strong>Assignment:</strong> <code>x = 5</code></li>
+        <li><strong>Control flow:</strong> <code>if/else</code>, <code>while/for</code>, <code>return</code></li>
+      </ul>
+    </div>
+    <div>
+      <h3>Declarations</h3>
+      <p><strong>Declarations</strong> introduce names:</p>
+      <ul>
+        <li><strong>Variable:</strong> <code>int x = 5</code></li>
+        <li><strong>Function:</strong> <code>def foo()</code></li>
+        <li><strong>Class:</strong> <code>class Bar</code></li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- Slide 8: AST vs Parse Tree -->
+<div class="slide">
+  <h2>AST vs Parse Tree</h2>
+  <table>
+    <tr><th>Feature</th><th>Parse Tree</th><th>AST</th></tr>
+    <tr><td>Parentheses</td><td>Included</td><td>Removed</td></tr>
+    <tr><td>Semicolons</td><td>Included</td><td>Removed</td></tr>
+    <tr><td>Intermediate grammar rules</td><td>Included</td><td>Removed</td></tr>
+    <tr><td>Semantic structure</td><td>Preserved</td><td>Preserved</td></tr>
+    <tr><td>Size</td><td>Larger</td><td>Compact</td></tr>
+    <tr><td>Use case</td><td>Parsing</td><td>Analysis</td></tr>
+  </table>
+  <div class="callout">
+    <p>ASTs are what analysis tools actually work with.</p>
+  </div>
+</div>
+
+<!-- Slide 9: Node Attributes -->
+<div class="slide">
+  <h2>Node Attributes</h2>
+  <p>Each AST node carries metadata:</p>
+  <pre><code>type ast_node = {
+  value : string;          (* The operation or value *)
+  children : ast_node list; (* Child nodes *)
+  line : int option;       (* Source location *)
+  col : int option;        (* Column number *)
+  type_info : string option; (* Type annotation *)
+}</code></pre>
+</div>
+
+<!-- Slide 10: Building ASTs in OCaml -->
+<div class="slide">
+  <h2>Building ASTs in OCaml</h2>
+  <p>We define ASTs as algebraic data types:</p>
+  <pre><code>type expr =
+  | IntLit of int | BoolLit of bool | Var of string
+  | BinOp of op * expr * expr
+  | UnaryOp of uop * expr
+  | Call of string * expr list
+
+type stmt =
+  | Assign of string * expr | If of expr * stmt list * stmt list
+  | While of expr * stmt list | Return of expr option
+  | Print of expr list</code></pre>
+  <div class="callout-green">
+    <p>Each variant is a node type. Children are embedded directly.</p>
+  </div>
+</div>
+
+<!-- Slide 11: OCaml AST Example -->
+<div class="slide">
+  <h2>OCaml AST Example</h2>
+  <pre><code>(* if x &gt; 0 then y = x + 1 *)
+let example_ast =
+  If (BinOp (Gt, Var "x", IntLit 0),
+    [Assign ("y", BinOp (Add, Var "x", IntLit 1))],
+    [])
+(* If -&gt; BinOp(Gt, Var "x", IntLit 0)
+      -&gt; [Assign("y", BinOp(Add, Var "x", IntLit 1))] *)</code></pre>
+</div>
+
+<!-- Slide 12: Hierarchical Structure -->
+<div class="slide">
+  <h2>Hierarchical Structure</h2>
+  <p><code>2 + 3 * 4</code> (precedence: * before +)</p>
+  <div class="diagram">    BinOp(+)
+    /       \
+  2       BinOp(*)
+          /      \
+         3        4</div>
+  <div class="callout-blue">
+    <p>Higher precedence operators appear <strong>lower</strong> in the tree.
+    The root operator is evaluated <strong>last</strong>.</p>
+  </div>
+</div>
+
+<!-- Slide 13: Lesson 2 Header — Traversal Algorithms -->
+<div class="slide">
+  <h2>Lesson 2: Traversal Algorithms</h2>
+  <p>How do we systematically visit every node in an AST?</p>
+  <p>Three main strategies:</p>
+  <ol>
+    <li><strong>Pre-order DFS</strong> (top-down)</li>
+    <li><strong>Post-order DFS</strong> (bottom-up)</li>
+    <li><strong>BFS / Level-order</strong></li>
+  </ol>
+</div>
+
+<!-- Slide 14: Pre-order Traversal -->
+<div class="slide">
+  <h2>Pre-order Traversal</h2>
+  <p><strong>Visit node FIRST, then children</strong></p>
+  <div class="diagram">        *
+       / \
+      +   4
+     / \
+    2   3</div>
+  <p>Visit order: <code>*, +, 2, 3, 4</code></p>
+  <div class="callout-blue">
+    <p>Use case: Top-down analyses (type checking, scope entry)</p>
+  </div>
+</div>
+
+<!-- Slide 15: Pre-order Implementation -->
+<div class="slide">
+  <h2>Pre-order Implementation</h2>
+  <pre><code>let rec pre_order node =
+  node.value :: List.concat_map pre_order node.children</code></pre>
+</div>
+
+<!-- Slide 16: Post-order Traversal -->
+<div class="slide">
+  <h2>Post-order Traversal</h2>
+  <p><strong>Visit children FIRST, then node</strong></p>
+  <div class="diagram">        *
+       / \
+      +   4
+     / \
+    2   3</div>
+  <p>Visit order: <code>2, 3, +, 4, *</code></p>
+  <div class="callout-blue">
+    <p>Use case: Bottom-up analyses (expression evaluation, code generation)</p>
+  </div>
+</div>
+
+<!-- Slide 17: Post-order Implementation -->
+<div class="slide">
+  <h2>Post-order Implementation</h2>
+  <pre><code>let rec post_order node =
+  List.concat_map post_order node.children @ [node.value]</code></pre>
+</div>
+
+<!-- Slide 18: BFS / Level-order Traversal -->
+<div class="slide">
+  <h2>BFS / Level-order Traversal</h2>
+  <p><strong>Visit all nodes at depth d before depth d+1</strong></p>
+  <div class="diagram">        *         &larr; Level 0
+       / \
+      +   4       &larr; Level 1
+     / \
+    2   3         &larr; Level 2</div>
+  <p>Visit order: <code>*, +, 4, 2, 3</code></p>
+  <div class="callout-blue">
+    <p>Use case: Level-based analysis, finding shortest paths</p>
+  </div>
+</div>
+
+<!-- Slide 19: BFS Implementation -->
+<div class="slide">
+  <h2>BFS Implementation</h2>
+  <pre><code>let bfs root =
+  let q = Queue.create () in
+  Queue.push root q;
+  let result = ref [] in
+  while not (Queue.is_empty q) do
+    let current = Queue.pop q in
+    result := current.value :: !result;
+    List.iter (fun c -&gt; Queue.push c q) current.children
+  done;
+  List.rev !result</code></pre>
+</div>
+
+<!-- Slide 20: Pattern Matching over ASTs -->
+<div class="slide">
+  <h2>Pattern Matching over ASTs</h2>
+  <p>In OCaml, <strong>pattern matching</strong> replaces the visitor pattern:</p>
+  <pre><code>let rec visit_expr = function
+  | IntLit n -&gt; handle_int n
+  | Var s -&gt; handle_var s
+  | BinOp (op, l, r) -&gt;
+    visit_expr l; visit_expr r; handle_binop op
+  | _ -&gt; ()</code></pre>
+  <div class="callout-green">
+    <p>Add new analyses by writing new <code>match</code> functions -- no class hierarchy needed.</p>
+  </div>
+</div>
+
+<!-- Slide 21: Example: Node Counter -->
+<div class="slide">
+  <h2>Example: Node Counter</h2>
+  <pre><code>let count_nodes stmts =
+  let counts = Hashtbl.create 16 in
+  let inc key =
+    let n = try Hashtbl.find counts key with Not_found -&gt; 0 in
+    Hashtbl.replace counts key (n + 1) in
+  let rec count_expr = function
+    | IntLit _ -&gt; inc "IntLit" | Var _ -&gt; inc "Var"
+    | BinOp (_, l, r) -&gt; inc "BinOp"; count_expr l; count_expr r
+    | _ -&gt; () in
+  let rec count_stmt = function
+    | Assign (_, e) -&gt; inc "Assign"; count_expr e
+    | If (c, t, e) -&gt; inc "If"; count_expr c;
+        List.iter count_stmt t; List.iter count_stmt e
+    | _ -&gt; () in
+  List.iter count_stmt stmts; counts</code></pre>
+</div>
+
+<!-- Slide 22: Traversal State Management -->
+<div class="slide">
+  <h2>Traversal State Management</h2>
+  <p>Complex analyses pass context through parameters:</p>
+  <pre><code>let rec analyze_stmt scope = function
+  | Assign (name, expr) -&gt;
+    let scope' = define scope name in  (* update scope *)
+    analyze_expr scope' expr
+  | If (cond, then_b, else_b) -&gt;
+    let inner = enter_scope scope in   (* new scope *)
+    List.iter (analyze_stmt inner) then_b;
+    List.iter (analyze_stmt inner) else_b
+  | _ -&gt; ()</code></pre>
+</div>
+
+<!-- Slide 23: Lesson 3 Header — Symbol Tables -->
+<div class="slide">
+  <h2>Lesson 3: Symbol Tables</h2>
+  <p><strong>Problem:</strong> How do we track which variables are declared where, and resolve references to the correct declaration?</p>
+  <pre><code>let x = 10              (* global x *)
+let foo () =
+  let x = 20 in         (* local x, shadows global *)
+  print_int x           (* which x? &rarr; local (20) *)
+let () = print_int x    (* which x? &rarr; global (10) *)</code></pre>
+</div>
+
+<!-- Slide 24: Symbol Table Structure -->
+<div class="slide">
+  <h2>Symbol Table Structure</h2>
+  <pre><code>module StringMap = Map.Make(String)
+
+type t = symbol_info StringMap.t list  (* scope stack *)
+
+let create () = [StringMap.empty]
+
+let define scope name info = match scope with
+  | top :: rest -&gt; StringMap.add name info top :: rest
+  | [] -&gt; failwith "no scope"
+
+let rec lookup scope name = match scope with
+  | top :: rest -&gt;
+    (match StringMap.find_opt name top with
+     | Some info -&gt; Some info
+     | None -&gt; lookup rest name)
+  | [] -&gt; None</code></pre>
+</div>
+
+<!-- Slide 25: Scope Chains -->
+<div class="slide">
+  <h2>Scope Chains</h2>
+  <div class="diagram">Global Scope: { x: int, foo: function }
+    |
+    +-- foo's Scope: { x: int }
+            |
+            +-- Block Scope: { y: int }</div>
+  <div class="callout">
+    <p>Lookup walks <strong>up</strong> the chain: block &rarr; function &rarr; global</p>
+  </div>
+</div>
+
+<!-- Slide 26: Shadowing -->
+<div class="slide">
+  <h2>Shadowing</h2>
+  <p>When an inner scope declares a name that exists in an outer scope:</p>
+  <pre><code>let x = 10               (* global scope: x = 10 *)
+let foo () =
+  let x = 20 in          (* foo scope: x = 20, shadows global *)
+  let bar () =
+    print_int x in        (* resolves to foo's x = 20 *)
+  bar ()</code></pre>
+</div>
+
+<!-- Slide 27: Lesson 4 Header — AST Transformations -->
+<div class="slide">
+  <h2>Lesson 4: AST Transformations</h2>
+  <p>ASTs aren't just for reading -- we can <strong>modify</strong> them.</p>
+  <p>Three fundamental transformations:</p>
+  <ol>
+    <li><strong>Constant Folding:</strong> <code>2 + 3</code> &rarr; <code>5</code></li>
+    <li><strong>Variable Renaming:</strong> <code>x</code> &rarr; <code>count</code></li>
+    <li><strong>Dead Code Elimination:</strong> Remove unreachable code</li>
+  </ol>
+</div>
+
+<!-- Slide 28: Constant Folding -->
+<div class="slide">
+  <h2>Constant Folding</h2>
+  <p>Replace constant expressions with their computed values:</p>
+  <div class="cols">
+    <div>
+      <h3>Before</h3>
+      <div class="diagram">    *
+   / \
+  +   4
+ / \
+2   3</div>
+    </div>
+    <div>
+      <h3>After (step 1)</h3>
+      <div class="diagram">    *
+   / \
+  5   4</div>
+    </div>
+    <div>
+      <h3>After (step 2)</h3>
+      <div class="diagram">   20</div>
+    </div>
+  </div>
+</div>
+
+<!-- Slide 29: Variable Renaming -->
+<div class="slide">
+  <h2>Variable Renaming</h2>
+  <p>Update all references consistently:</p>
+  <pre><code>(* Before: rename 'x' to 'count' *)
+[Assign ("x", IntLit 0);
+ Assign ("x", BinOp (Add, Var "x", IntLit 1));
+ Print [Var "x"]]
+(* After: *)
+[Assign ("count", IntLit 0);
+ Assign ("count", BinOp (Add, Var "count", IntLit 1));
+ Print [Var "count"]]</code></pre>
+  <div class="callout">
+    <p>Must update both declarations <strong>AND</strong> references.</p>
+  </div>
+</div>
+
+<!-- Slide 30: Dead Code Elimination -->
+<div class="slide">
+  <h2>Dead Code Elimination</h2>
+  <p>Remove code that can never execute:</p>
+  <pre><code>(* Before: *)
+[Return (Some (IntLit 42));
+ Print [Var "unreachable"]]   (* &larr; remove this *)
+
+If (BoolLit true,             (* constant condition *)
+  [Assign ("x", IntLit 1)],
+  [Assign ("x", IntLit 2)])   (* &larr; remove else branch *)</code></pre>
+</div>
+
+<!-- Slide 31: Transformation Safety -->
+<div class="slide">
+  <h2>Transformation Safety</h2>
+  <p>Transformations must preserve program semantics:</p>
+  <ul>
+    <li><strong>Immutable updates:</strong> Create new nodes rather than modifying in-place</li>
+    <li><strong>Parent-child consistency:</strong> Update all references when moving nodes</li>
+    <li><strong>Scope awareness:</strong> Variable renaming must respect scope boundaries</li>
+    <li><strong>Order matters:</strong> Apply transformations in the right sequence</li>
+  </ul>
+</div>
+
+<!-- Slide 32: Hands-On Exercises -->
+<div class="slide">
+  <h2>Hands-On Exercises</h2>
+  <p>Four exercises building incrementally:</p>
+  <ol>
+    <li><strong>AST Structure Mapping</strong> - Visualize ASTs using <code>shared_ast</code> types</li>
+    <li><strong>Traversal Algorithms</strong> - Implement DFS and BFS via pattern matching</li>
+    <li><strong>Symbol Table</strong> - Build scoped symbol table with <code>Map.Make(String)</code></li>
+    <li><strong>AST Transformations</strong> - Constant folding, renaming, dead code elimination</li>
+  </ol>
+</div>
+
+<!-- Slide 33: Key Takeaways -->
+<div class="slide">
+  <h2>Key Takeaways</h2>
+  <ul>
+    <li><strong>ASTs provide structured representations</strong> of code for systematic analysis</li>
+    <li><strong>Different traversals serve different needs:</strong> pre-order (top-down), post-order (bottom-up), BFS (level-based)</li>
+    <li><strong>Symbol tables</strong> track identifiers across nested scopes using scope chains</li>
+    <li><strong>AST transformations</strong> enable automated refactoring and optimization</li>
+    <li>These concepts are the foundation for <strong>all program analysis tools</strong></li>
+  </ul>
+</div>
+
+<!-- Slide 34: Next Module Preview -->
+<div class="slide">
+  <h2>Next Module Preview</h2>
+  <h3>Module 3: Static Analysis Fundamentals</h3>
+  <ul>
+    <li>Control Flow Graphs (CFGs)</li>
+    <li>Dataflow analysis framework</li>
+    <li>Reaching definitions, live variables</li>
+    <li>Building your first static analyzer</li>
+  </ul>
+  <div class="callout-green">
+    <p><strong>Prep:</strong> Review set theory (union, intersection) and basic graph theory</p>
+  </div>
+</div>
+
+</div>
+<div class="nav">
+  <button id="prev" onclick="go(-1)">&larr; Prev</button>
+  <button id="next" onclick="go(1)">Next &rarr;</button>
+</div>
+<script>
+  let cur = 0;
+  const slides = document.querySelectorAll('.slide');
+  const total = slides.length;
+  function show(n) {
+    slides.forEach(s => s.classList.remove('active'));
+    cur = Math.max(0, Math.min(n, total - 1));
+    slides[cur].classList.add('active');
+    document.getElementById('prev').disabled = cur === 0;
+    document.getElementById('next').disabled = cur === total - 1;
+    document.getElementById('counter').textContent = (cur + 1) + ' / ' + total;
+    document.getElementById('progress').style.width = ((cur + 1) / total * 100) + '%';
+  }
+  function go(d) { show(cur + d); }
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); go(1); }
+    if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); go(-1); }
+    if (e.key === 'Home') { e.preventDefault(); show(0); }
+    if (e.key === 'End') { e.preventDefault(); show(total - 1); }
+  });
+  let tx = 0;
+  document.addEventListener('touchstart', e => { tx = e.touches[0].clientX; });
+  document.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - tx;
+    if (Math.abs(dx) > 50) go(dx < 0 ? 1 : -1);
+  });
+  show(0);
+</script>
+</body>
+</html>

@@ -1,0 +1,902 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Module 0: OCaml Warm-Up</title>
+<style>
+  :root {
+    --bg: #ffffff; --fg: #1a1a2e; --accent: #e94560; --accent2: #0f3460;
+    --accent3: #16213e; --code-bg: #f4f4f8; --border: #ddd;
+    --shadow: rgba(0,0,0,0.08); --green: #27ae60; --orange: #f39c12;
+    --red: #e74c3c; --blue: #2980b9;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: #f0f0f5; color: var(--fg); overflow: hidden; height: 100vh; }
+  .deck { position: relative; width: 100vw; height: 100vh; }
+  .slide { display: none; position: absolute; inset: 0; padding: 48px 64px; background: var(--bg); overflow-y: auto; animation: fadeIn 0.3s ease; }
+  .slide.active { display: flex; flex-direction: column; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: none; } }
+  h1 { font-size: 2.8em; color: var(--accent2); margin-bottom: 8px; font-weight: 700; }
+  h2 { font-size: 2em; color: var(--accent2); margin-bottom: 16px; border-bottom: 3px solid var(--accent); padding-bottom: 8px; display: inline-block; }
+  h3 { font-size: 1.3em; color: var(--accent3); margin: 12px 0 6px; }
+  p, li { font-size: 1.15em; line-height: 1.6; margin-bottom: 8px; }
+  ul, ol { padding-left: 28px; }
+  strong { color: var(--accent2); }
+  em { color: var(--accent); font-style: normal; font-weight: 600; }
+  pre { background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; font-size: 0.95em; line-height: 1.5; overflow-x: auto; margin: 12px 0; font-family: 'JetBrains Mono', 'Fira Code', 'SF Mono', monospace; }
+  code { font-family: 'JetBrains Mono', 'Fira Code', 'SF Mono', monospace; background: var(--code-bg); padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+  pre code { background: none; padding: 0; }
+  table { border-collapse: collapse; margin: 12px 0; font-size: 1em; width: auto; }
+  th, td { border: 1px solid var(--border); padding: 8px 14px; text-align: left; }
+  th { background: var(--accent2); color: white; font-weight: 600; }
+  tr:nth-child(even) { background: #f8f8fc; }
+  .diagram { background: var(--code-bg); border: 2px solid var(--accent2); border-radius: 8px; padding: 20px; font-family: 'JetBrains Mono', monospace; font-size: 0.95em; line-height: 1.6; white-space: pre; margin: 12px 0; overflow-x: auto; }
+  .callout { border-left: 4px solid var(--accent); background: #fff5f7; padding: 12px 16px; margin: 12px 0; border-radius: 0 8px 8px 0; }
+  .callout-green { border-left: 4px solid var(--green); background: #f0faf4; padding: 12px 16px; margin: 12px 0; border-radius: 0 8px 8px 0; }
+  .callout-blue { border-left: 4px solid var(--blue); background: #f0f6ff; padding: 12px 16px; margin: 12px 0; border-radius: 0 8px 8px 0; }
+  .cols { display: flex; gap: 32px; flex: 1; }
+  .cols > div { flex: 1; }
+  .title-slide { justify-content: center; align-items: center; text-align: center; background: linear-gradient(135deg, var(--accent2) 0%, var(--accent3) 100%); color: white; }
+  .title-slide h1 { color: white; font-size: 3.5em; border: none; }
+  .title-slide h2 { color: rgba(255,255,255,0.85); border: none; font-size: 1.6em; font-weight: 400; }
+  .nav { position: fixed; bottom: 20px; right: 24px; display: flex; gap: 8px; z-index: 100; }
+  .nav button { background: var(--accent2); color: white; border: none; border-radius: 6px; padding: 10px 20px; font-size: 1em; cursor: pointer; transition: background 0.2s; }
+  .nav button:hover { background: var(--accent); }
+  .nav button:disabled { opacity: 0.3; cursor: default; }
+  .counter { position: fixed; bottom: 24px; left: 24px; font-size: 0.9em; color: #888; z-index: 100; }
+  .progress { position: fixed; top: 0; left: 0; height: 4px; background: var(--accent); transition: width 0.3s ease; z-index: 100; }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 0.85em; font-weight: 600; color: white; }
+  .badge-critical { background: var(--red); }
+  .badge-high { background: var(--orange); }
+  .badge-medium { background: var(--blue); }
+</style>
+</head>
+<body>
+<div class="progress" id="progress"></div>
+<div class="counter" id="counter"></div>
+<div class="deck" id="deck">
+
+<!-- ========== SLIDE 1: Title ========== -->
+<div class="slide title-slide">
+  <h1>OCaml Warm-Up</h1>
+  <h2>Module 0 &mdash; Program Analysis Bootcamp</h2>
+  <p style="font-size:1.2em; margin-top:24px; color:rgba(255,255,255,0.7);">Getting ready for program analysis with OCaml</p>
+  <p style="font-size:1em; margin-top:40px; color:rgba(255,255,255,0.5);">5 exercises &bull; ~2 hours &bull; No tests &mdash; guided tutorials</p>
+</div>
+
+<!-- ========== SLIDE 2: Learning Objectives ========== -->
+<div class="slide">
+  <h2>Learning Objectives</h2>
+  <p>By the end of this module, you will be able to:</p>
+  <ol>
+    <li><strong>Write OCaml functions</strong> using let bindings, type annotations, pattern matching, and recursion</li>
+    <li><strong>Define and manipulate algebraic data types</strong> (ADTs) representing expression trees</li>
+    <li><strong>Use collection types</strong> &mdash; <code>List.map</code>/<code>fold</code>, <code>StringMap</code>, <code>StringSet</code>, and <code>ref</code></li>
+    <li><strong>Build modules satisfying a signature</strong> and use functors to parameterize code</li>
+    <li><strong>Read and extend</strong> <code>ocamllex</code>/<code>Menhir</code> grammar rules for a simple parser</li>
+  </ol>
+  <div class="callout-blue">
+    <strong>Why these five?</strong> Each exercise directly foreshadows a concept you will use in Modules 2-6: AST types, dataflow sets, abstract domains, and parser grammars.
+  </div>
+</div>
+
+<!-- ========== SLIDE 3: Why OCaml? ========== -->
+<div class="slide">
+  <h2>Why OCaml for Program Analysis?</h2>
+  <div class="cols">
+    <div>
+      <h3>Pattern Matching</h3>
+      <p>Match on AST node types directly. The compiler warns you if you forget a case.</p>
+      <h3>Algebraic Data Types</h3>
+      <p>ASTs, lattice values, and analysis results are all naturally expressed as ADTs.</p>
+      <h3>Type Safety</h3>
+      <p>Strong static types catch bugs at compile time &mdash; no null pointer surprises.</p>
+    </div>
+    <div>
+      <h3>Immutability by Default</h3>
+      <p>Functional style means fewer side effects, easier reasoning about program state.</p>
+      <h3>Module System</h3>
+      <p>Signatures + functors let you write generic analyses parameterized by abstract domains.</p>
+      <h3>Tooling</h3>
+      <p><code>ocamllex</code> and <code>Menhir</code> provide industrial-strength lexer/parser generators.</p>
+    </div>
+  </div>
+  <div class="callout-green">
+    <strong>Industry note:</strong> Facebook's Infer, Jane Street's trading systems, and the Coq proof assistant are all built in OCaml.
+  </div>
+</div>
+
+<!-- ========== SLIDE 4: Let Bindings & Functions ========== -->
+<div class="slide">
+  <h2>OCaml Basics: Let Bindings &amp; Functions</h2>
+  <div class="cols">
+    <div>
+      <h3>Top-level bindings</h3>
+<pre><code>(* Immutable binding *)
+let x = 42
+
+(* Function with type annotations *)
+let square (n : int) : int = n * n
+
+(* Multiple arguments *)
+let add (a : int) (b : int) : int = a + b</code></pre>
+      <h3>Local bindings with <code>let...in</code></h3>
+<pre><code>let hypotenuse a b =
+  let a2 = a *. a in
+  let b2 = b *. b in
+  Float.sqrt (a2 +. b2)</code></pre>
+    </div>
+    <div>
+      <h3>If / then / else (expression, not statement)</h3>
+<pre><code>let abs x =
+  if x >= 0 then x else -x
+
+(* Returns a value -- no "return" keyword *)
+let classify n =
+  if n > 0 then "positive"
+  else if n < 0 then "negative"
+  else "zero"</code></pre>
+      <h3>Key idea</h3>
+      <p>Everything is an <strong>expression</strong> that produces a value. There are no statements.</p>
+      <div class="callout">
+        <strong>Exercise 1</strong> builds on these: <code>square</code>, <code>is_empty</code>, <code>greet</code>, <code>is_digit</code>, <code>classify_char</code>.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== SLIDE 5: Tuples and Records ========== -->
+<div class="slide">
+  <h2>OCaml Basics: Tuples and Records</h2>
+  <div class="cols">
+    <div>
+      <h3>Tuples &mdash; lightweight grouping</h3>
+<pre><code>(* A position is (line, column) *)
+type pos = int * int
+
+let origin : pos = (1, 1)
+
+(* Destructure in function args *)
+let format_pos ((line, col) : pos) : string =
+  Printf.sprintf "line %d, col %d" line col
+
+(* Pattern match *)
+let advance_pos (line, col) c =
+  if c = '\n' then (line + 1, 1)
+  else (line, col + 1)</code></pre>
+      <p>Tuples are <em>positional</em> &mdash; access by pattern matching, not by name.</p>
+    </div>
+    <div>
+      <h3>Records &mdash; named fields</h3>
+<pre><code>type assignment = {
+  var_name : string;
+  value    : int;
+  line     : int;
+}
+
+let a = { var_name = "x"; value = 5; line = 1 }
+
+(* Field access *)
+let name = a.var_name
+
+(* Functional update -- creates a NEW record *)
+let a' = { a with value = a.value + 3 }</code></pre>
+      <p>Records are <em>immutable by default</em>. Use <code>{ r with field = new_val }</code> to "update".</p>
+    </div>
+  </div>
+</div>
+
+<!-- ========== SLIDE 6: Printf and String Formatting ========== -->
+<div class="slide">
+  <h2>OCaml Basics: Printf and String Formatting</h2>
+  <h3>String concatenation</h3>
+<pre><code>let greeting = "Hello, " ^ "world!"       (* "Hello, world!" *)
+let msg = "x = " ^ string_of_int 42       (* "x = 42" *)</code></pre>
+
+  <h3>Printf &mdash; type-safe formatted output</h3>
+<pre><code>(* Print to stdout *)
+Printf.printf "name = %s, age = %d\n" "Alice" 30
+
+(* Format to a string *)
+let s = Printf.sprintf "[%s: %s]" "keyword" "if"
+
+(* Common format specifiers *)
+(*  %d  int          %s  string       %b  bool
+    %f  float        %c  char         %B  bool (true/false)  *)</code></pre>
+
+  <h3>Type safety in action</h3>
+<pre><code>(* This is a compile error -- OCaml checks format types! *)
+Printf.printf "%d" "not an int"
+(* Error: This expression has type string but ... expected int *)</code></pre>
+
+  <div class="callout-green">
+    <strong>Contrast with C:</strong> OCaml's <code>Printf</code> is checked at compile time. No <code>%s</code>-on-an-int crashes.
+  </div>
+</div>
+
+<!-- ========== SLIDE 7: Algebraic Data Types ========== -->
+<div class="slide">
+  <h2>Algebraic Data Types (ADTs)</h2>
+  <p>ADTs let you define types with <strong>multiple variants</strong>, each carrying different data. They are the backbone of ASTs in program analysis.</p>
+  <div class="cols">
+    <div>
+      <h3>Defining variants</h3>
+<pre><code>(* Binary operators *)
+type op = Add | Sub | Mul
+
+(* Expression tree -- a mini AST *)
+type expr =
+  | Num of int
+  | Var of string
+  | BinOp of op * expr * expr</code></pre>
+      <p>Each variant is a <em>constructor</em> that tags the data it carries.</p>
+    </div>
+    <div>
+      <h3>Building values</h3>
+<pre><code>(* 2 + 3 *)
+let e1 = BinOp (Add, Num 2, Num 3)
+
+(* x * (1 + y) *)
+let e2 = BinOp (Mul, Var "x",
+            BinOp (Add, Num 1, Var "y"))</code></pre>
+      <div class="diagram">    BinOp(Mul)
+    /        \
+ Var "x"  BinOp(Add)
+          /        \
+       Num 1    Var "y"</div>
+    </div>
+  </div>
+  <div class="callout-blue">
+    <strong>Foreshadow:</strong> Module 2's <code>Shared_ast.Ast_types</code> defines <code>expr</code>, <code>stmt</code>, <code>func_def</code>, and <code>program</code> using exactly this pattern.
+  </div>
+</div>
+
+<!-- ========== SLIDE 8: Pattern Matching ========== -->
+<div class="slide">
+  <h2>Pattern Matching</h2>
+  <p><code>match...with</code> is OCaml's most powerful control structure. It destructures values and the compiler ensures you handle every case.</p>
+  <div class="cols">
+    <div>
+      <h3>Basic matching</h3>
+<pre><code>let string_of_op o =
+  match o with
+  | Add -> "+"
+  | Sub -> "-"
+  | Mul -> "*"</code></pre>
+      <h3>Recursive matching on trees</h3>
+<pre><code>let rec string_of_expr e =
+  match e with
+  | Num n -> string_of_int n
+  | Var x -> x
+  | BinOp (o, l, r) ->
+    Printf.sprintf "(%s %s %s)"
+      (string_of_expr l)
+      (string_of_op o)
+      (string_of_expr r)</code></pre>
+    </div>
+    <div>
+      <h3>Exhaustiveness checking</h3>
+<pre><code>(* If you forget a case: *)
+let bad o = match o with
+  | Add -> "+"
+  | Sub -> "-"
+(* Warning 8: this pattern-matching
+   is not exhaustive.
+   Here is an example of a case
+   that is not matched: Mul *)</code></pre>
+      <div class="callout">
+        <strong>This is critical for analysis.</strong> When you add a new AST node type, the compiler tells you every function that needs updating.
+      </div>
+      <h3>Matching on tuples</h3>
+<pre><code>let classify (x, y) = match (x, y) with
+  | (0, 0) -> "origin"
+  | (0, _) -> "y-axis"
+  | (_, 0) -> "x-axis"
+  | _      -> "other"</code></pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== SLIDE 9: Recursion and Option ========== -->
+<div class="slide">
+  <h2>Recursion and the Option Type</h2>
+  <div class="cols">
+    <div>
+      <h3>Recursive functions with <code>let rec</code></h3>
+<pre><code>(* Count nodes in an expression tree *)
+let rec count_nodes e =
+  match e with
+  | Num _ | Var _ -> 1
+  | BinOp (_, l, r) ->
+    1 + count_nodes l + count_nodes r
+
+(* Tree depth *)
+let rec depth e =
+  match e with
+  | Num _ | Var _ -> 1
+  | BinOp (_, l, r) ->
+    1 + max (depth l) (depth r)</code></pre>
+    </div>
+    <div>
+      <h3>Option: safe "nullable" values</h3>
+<pre><code>(* Option type: Some x or None *)
+type 'a option = Some of 'a | None
+
+(* Evaluate if no variables present *)
+let rec eval e =
+  match e with
+  | Num n -> Some n
+  | Var _ -> None  (* can't evaluate *)
+  | BinOp (o, l, r) ->
+    match eval l, eval r with
+    | Some a, Some b ->
+      Some (apply_op o a b)
+    | _ -> None</code></pre>
+      <div class="callout-blue">
+        <strong>Foreshadow:</strong> "We might not know the exact value" is the norm in abstract interpretation (Module 4). Option is a tiny abstract domain: <code>Some n</code> = known, <code>None</code> = unknown.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== SLIDE 10: Expression Trees as ADTs ========== -->
+<div class="slide">
+  <h2>Expression Trees as ADTs</h2>
+  <p>Tree transformations are the core mechanic of program analysis. You will do this constantly in Modules 2-6.</p>
+  <h3>Substitution &mdash; replacing variables with values</h3>
+<pre><code>(* substitute "x" 5 (x * (1 + y))  -->  (5 * (1 + y)) *)
+let rec substitute var_name value e =
+  match e with
+  | Num _ -> e
+  | Var x -> if x = var_name then Num value else e
+  | BinOp (o, l, r) ->
+    BinOp (o, substitute var_name value l,
+               substitute var_name value r)</code></pre>
+
+  <h3>Constant folding &mdash; simplifying known sub-expressions</h3>
+<pre><code>(* simplify (10 + 20) - 5  -->  25 *)
+let rec simplify e =
+  match e with
+  | Num _ | Var _ -> e
+  | BinOp (o, l, r) ->
+    match simplify l, simplify r with
+    | Num a, Num b -> Num (apply_op o a b)  (* fold! *)
+    | l', r' -> BinOp (o, l', r')           (* can't fold *)</code></pre>
+
+  <div class="callout-blue">
+    <strong>Foreshadow:</strong> Constant folding is a real compiler optimization. Module 4's abstract interpretation generalizes this: instead of exact values, you track <em>sign</em>, <em>range</em>, or <em>taint</em>.
+  </div>
+</div>
+
+<!-- ========== SLIDE 11: Lists and Higher-Order Functions ========== -->
+<div class="slide">
+  <h2>Lists and Higher-Order Functions</h2>
+  <div class="cols">
+    <div>
+      <h3>List basics</h3>
+<pre><code>(* Immutable linked lists *)
+let xs = [1; 2; 3; 4; 5]
+let ys = 0 :: xs  (* prepend: [0;1;2;3;4;5] *)
+
+(* Pattern match on lists *)
+let rec length = function
+  | [] -> 0
+  | _ :: rest -> 1 + length rest</code></pre>
+
+      <h3><code>List.map</code> &mdash; transform each element</h3>
+<pre><code>let double_all xs = List.map (fun x -> x * 2) xs
+(* double_all [1;2;3] = [2;4;6] *)</code></pre>
+
+      <h3><code>List.filter</code> &mdash; keep matching elements</h3>
+<pre><code>let keep_positive xs =
+  List.filter (fun x -> x > 0) xs
+(* keep_positive [-1;3;0;5] = [3;5] *)</code></pre>
+    </div>
+    <div>
+      <h3><code>List.fold_left</code> &mdash; reduce to a single value</h3>
+<pre><code>let sum xs =
+  List.fold_left (fun acc x -> acc + x) 0 xs
+(* sum [1;2;3;4] = 10 *)</code></pre>
+      <div class="diagram">List.fold_left f init [a; b; c]
+
+  Step 1:  f init a  -->  r1
+  Step 2:  f r1   b  -->  r2
+  Step 3:  f r2   c  -->  result</div>
+      <div class="callout-green">
+        <strong>Why this matters:</strong> You will use <code>fold_left</code> everywhere &mdash; building environments from lists of assignments, accumulating analysis results, computing fixpoints.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== SLIDE 12: Map and Set ========== -->
+<div class="slide">
+  <h2>Collections: Map and Set</h2>
+  <p>OCaml's standard library provides <strong>immutable</strong>, balanced-tree-backed Map and Set via functors.</p>
+  <div class="cols">
+    <div>
+      <h3>StringMap &mdash; variable environments</h3>
+<pre><code>module StringMap = Map.Make(String)
+
+(* Build from a list of pairs *)
+let build_env pairs =
+  List.fold_left
+    (fun env (k, v) -> StringMap.add k v env)
+    StringMap.empty
+    pairs
+
+(* Lookup with Option *)
+let lookup env name =
+  StringMap.find_opt name env
+
+(* Get all keys *)
+let all_vars env =
+  List.map fst (StringMap.bindings env)</code></pre>
+    </div>
+    <div>
+      <h3>StringSet &mdash; variable sets</h3>
+<pre><code>module StringSet = Set.Make(String)
+
+let s1 = StringSet.of_list ["x"; "y"; "z"]
+let s2 = StringSet.of_list ["y"; "z"; "w"]
+
+(* Set operations *)
+let union = StringSet.union s1 s2
+let inter = StringSet.inter s1 s2
+let diff  = StringSet.diff s1 s2
+
+(* Convert to list *)
+StringSet.elements inter  (* ["y"; "z"] *)</code></pre>
+      <div class="callout-blue">
+        <strong>Foreshadow:</strong> Modules 3-5 use <code>StringSet</code> for live-variable sets, reaching-definition sets, and taint sets. Map stores variable-to-abstract-value bindings.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== SLIDE 13: Records and Mutable State ========== -->
+<div class="slide">
+  <h2>Records and Mutable State</h2>
+  <div class="cols">
+    <div>
+      <h3>Records in practice</h3>
+<pre><code>type assignment = {
+  var_name : string;
+  value    : int;
+  line     : int;
+}
+
+let a = { var_name="x"; value=5; line=1 }
+
+(* Format for display *)
+let format_assign a =
+  Printf.sprintf "%s = %d (line %d)"
+    a.var_name a.value a.line
+
+(* Functional update *)
+let increment_value a n =
+  { a with value = a.value + n }</code></pre>
+    </div>
+    <div>
+      <h3>Mutable state with <code>ref</code></h3>
+<pre><code>(* ref creates a mutable cell *)
+let counter = ref 0
+
+(* Read with ! *)
+let current = !counter     (* 0 *)
+
+(* Write with := *)
+counter := !counter + 1    (* now 1 *)
+
+(* Closure over a ref -- a counter factory *)
+let make_counter () =
+  let n = ref 0 in
+  fun () ->
+    let v = !n in
+    n := v + 1;
+    v
+
+let next = make_counter ()
+(* next() = 0, next() = 1, next() = 2 *)</code></pre>
+      <div class="callout">
+        <strong>Use sparingly.</strong> You will see <code>ref</code> in fixpoint loops (Modules 3-4) where a worklist updates until convergence.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== SLIDE 14: Module System ========== -->
+<div class="slide">
+  <h2>Module System: Signatures and Structures</h2>
+  <p>OCaml modules group related types, values, and functions. Signatures describe the <strong>interface</strong>; structures provide the <strong>implementation</strong>.</p>
+  <div class="cols">
+    <div>
+      <h3>Signature (module type)</h3>
+<pre><code>module type LATTICE = sig
+  type t
+  val bottom : t
+  val top : t
+  val join : t -> t -> t
+  val equal : t -> t -> bool
+  val to_string : t -> string
+end</code></pre>
+      <p>The signature says <em>what</em> exists. The type <code>t</code> is <strong>abstract</strong> &mdash; callers cannot see its representation.</p>
+    </div>
+    <div>
+      <h3>Structure (module)</h3>
+<pre><code>module BoolLattice : LATTICE
+  with type t = bool
+= struct
+  type t = bool
+  let bottom = false
+  let top = true
+  let join a b = a || b
+  let equal a b = (a = b)
+  let to_string b =
+    if b then "true" else "false"
+end</code></pre>
+      <p>The <code>with type t = bool</code> makes the type <em>transparent</em> so callers can pass <code>true</code>/<code>false</code> directly.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ========== SLIDE 15: Functors ========== -->
+<div class="slide">
+  <h2>Functors: Parameterized Modules</h2>
+  <p>A functor is a <strong>function from modules to modules</strong>. It lets you write generic code parameterized by an interface.</p>
+<pre><code>(* MakeEnv takes any LATTICE and produces an environment module *)
+module MakeEnv (L : LATTICE) = struct
+  module M = Map.Make(String)
+  type t = L.t M.t                  (* map from string to L.t *)
+
+  let empty = M.empty
+
+  let lookup env x =
+    match M.find_opt x env with
+    | Some v -> v
+    | None   -> L.bottom            (* missing = bottom *)
+
+  let update env x v = M.add x v env
+
+  let join env1 env2 =
+    M.union (fun _k v1 v2 -> Some (L.join v1 v2)) env1 env2
+end</code></pre>
+  <h3>Instantiation</h3>
+<pre><code>module Env = MakeEnv(ThreeValueLattice)   (* concrete environment *)
+let env = Env.update Env.empty "x" Zero   (* use it! *)</code></pre>
+  <div class="callout-blue">
+    <strong>Foreshadow:</strong> This is exactly the pattern in <code>lib/abstract_domains/abstract_env.ml</code>. In Modules 3-4, you will plug in sign domains, interval domains, and taint domains as the <code>LATTICE</code> parameter.
+  </div>
+</div>
+
+<!-- ========== SLIDE 16: Building a Lattice ========== -->
+<div class="slide">
+  <h2>Building a Simple Lattice Module</h2>
+  <p>A <strong>lattice</strong> is a partially ordered set with a least element (bottom), greatest element (top), and a join operation (least upper bound).</p>
+  <div class="cols">
+    <div>
+      <div class="diagram">       Unknown (top)
+       /        \
+    Zero    Positive
+       \        /
+        Bot (bottom)</div>
+      <h3>ThreeValueLattice</h3>
+<pre><code>type three_value =
+  | Bot | Zero | Positive | Unknown
+
+module ThreeValueLattice
+  : LATTICE with type t = three_value
+= struct
+  type t = three_value
+  let bottom = Bot
+  let top = Unknown
+  let join a b =
+    if a = b then a
+    else if a = Bot then b
+    else if b = Bot then a
+    else Unknown
+  let equal a b = (a = b)
+  let to_string = function
+    | Bot -> "Bot" | Zero -> "Zero"
+    | Positive -> "Positive"
+    | Unknown -> "Unknown"
+end</code></pre>
+    </div>
+    <div>
+      <h3>Why lattices?</h3>
+      <p>Every abstract domain in program analysis forms a lattice:</p>
+      <ul>
+        <li><em>Bottom</em> = no information / unreachable</li>
+        <li><em>Top</em> = could be anything / no precision</li>
+        <li><em>Join</em> = merge information from two paths</li>
+      </ul>
+      <div class="diagram">  if (cond) {
+    x = 0;       // x -> Zero
+  } else {
+    x = 5;       // x -> Positive
+  }
+  // x -> join(Zero, Positive) = Unknown</div>
+      <div class="callout-blue">
+        <strong>Foreshadow:</strong> Module 3 (reaching definitions) and Module 4 (sign analysis) are both built on this exact lattice + functor pattern.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== SLIDE 17: Parsing Overview ========== -->
+<div class="slide">
+  <h2>Parsing with ocamllex and Menhir</h2>
+  <p>A parser turns source text into an AST. OCaml provides two tools that work together:</p>
+  <div class="diagram">                        ocamllex                Menhir
+  Source text ---------> Token stream ---------> AST
+  "3 + x * 2"      [INT 3; PLUS;         BinOp(Add, Num 3,
+                     IDENT "x";            BinOp(Mul, Var "x",
+                     STAR; INT 2]               Num 2))</div>
+  <div class="cols">
+    <div>
+      <h3>ocamllex &mdash; lexer (<code>.mll</code> files)</h3>
+<pre><code>let digit = ['0'-'9']
+let alpha = ['a'-'z' 'A'-'Z' '_']
+
+rule token = parse
+  | [' ' '\t' '\n']+  { token lexbuf }
+  | '+'               { PLUS }
+  | '-'               { MINUS }
+  | digit+ as n       { INT (int_of_string n) }
+  | alpha+ as id      { IDENT id }
+  | eof               { EOF }</code></pre>
+    </div>
+    <div>
+      <h3>Menhir &mdash; parser (<code>.mly</code> files)</h3>
+<pre><code>%token &lt;int&gt; INT
+%token &lt;string&gt; IDENT
+%token PLUS MINUS STAR SLASH
+%left PLUS MINUS    (* precedence *)
+%left STAR SLASH
+
+%%
+program: e=expr EOF  { e } ;
+
+expr:
+  | e1=expr PLUS e2=expr
+      { BinOp(Add, e1, e2) }
+  | a=atom  { a } ;
+
+atom:
+  | n=INT   { Num n }
+  | id=IDENT { Var id } ;</code></pre>
+    </div>
+  </div>
+</div>
+
+<!-- ========== SLIDE 18: Menhir Deep Dive ========== -->
+<div class="slide">
+  <h2>Menhir: Precedence and Associativity</h2>
+  <p>Menhir resolves ambiguity in grammars using <strong>precedence</strong> and <strong>associativity</strong> declarations.</p>
+  <div class="cols">
+    <div>
+      <h3>The ambiguity problem</h3>
+      <p>How should <code>3 + 4 * 2</code> be parsed?</p>
+      <div class="diagram">  Option A:           Option B:
+  BinOp(Mul,         BinOp(Add,
+    BinOp(Add,         Num 3,
+      Num 3,           BinOp(Mul,
+      Num 4),            Num 4,
+    Num 2)               Num 2))
+  = (3+4)*2 = 14    = 3+(4*2) = 11</div>
+      <p>We want Option B (standard math precedence).</p>
+    </div>
+    <div>
+      <h3>Declarations (lowest to highest)</h3>
+<pre><code>%left PLUS MINUS       (* lowest *)
+%left STAR SLASH       (* higher *)
+%nonassoc UMINUS       (* highest *)</code></pre>
+      <ul>
+        <li><code>%left</code> &mdash; left-associative: <code>a-b-c</code> = <code>(a-b)-c</code></li>
+        <li><code>%right</code> &mdash; right-associative</li>
+        <li><code>%nonassoc</code> &mdash; cannot chain</li>
+      </ul>
+      <h3>Unary minus trick</h3>
+<pre><code>atom:
+  | MINUS a=atom %prec UMINUS
+      { Neg a }
+  ;</code></pre>
+      <p><code>%prec UMINUS</code> tells Menhir to use the highest precedence for this rule.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ========== SLIDE 19: Exercises Overview ========== -->
+<div class="slide">
+  <h2>Hands-On Exercises Overview</h2>
+  <table style="width:100%">
+    <tr>
+      <th>#</th>
+      <th>Exercise</th>
+      <th>Time</th>
+      <th>Key Concepts</th>
+      <th>Foreshadows</th>
+    </tr>
+    <tr>
+      <td>1</td>
+      <td><strong>OCaml Basics</strong><br><em>"Token Classifier"</em></td>
+      <td>~20 min</td>
+      <td><code>let</code>, functions, tuples, <code>Printf</code>, char classification</td>
+      <td>Lexer helpers</td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td><strong>Types and Recursion</strong><br><em>"Mini Expression Tree"</em></td>
+      <td>~25 min</td>
+      <td>ADTs, pattern matching, <code>Option</code>, recursive tree ops</td>
+      <td><code>shared_ast</code> expr type</td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td><strong>Collections and Records</strong><br><em>"Variable Tracker"</em></td>
+      <td>~25 min</td>
+      <td><code>List.map/fold</code>, <code>StringMap</code>, <code>StringSet</code>, <code>ref</code></td>
+      <td>Dataflow analysis</td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td><strong>Modules and Functors</strong><br><em>"Analysis Domain Builder"</em></td>
+      <td>~25 min</td>
+      <td>Signatures, structs, functors, <code>LATTICE</code></td>
+      <td><code>abstract_domains</code></td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td><strong>Calculator Parser</strong></td>
+      <td>~25 min</td>
+      <td><code>ocamllex</code>, Menhir grammar rules</td>
+      <td>Lab 2 parser</td>
+    </tr>
+  </table>
+  <div class="callout-green">
+    <strong>How to work:</strong> Fill in <code>(* EXERCISE: ... *)</code> stubs, run with <code>dune exec</code>, and compare output against the STUDENT_README. No OUnit2 tests &mdash; just guided tutorials.
+  </div>
+</div>
+
+<!-- ========== SLIDE 20: Bootcamp Roadmap ========== -->
+<div class="slide">
+  <h2>How Module 0 Connects to the Bootcamp</h2>
+  <div class="diagram">  Module 0         Module 1          Module 2          Module 3
+ OCaml Warm-Up   Foundations       AST & CFG       Dataflow Analysis
+ +-----------+   +-----------+   +------------+   +----------------+
+ | let, ADTs |   | What is   |   | shared_ast |   | Reaching defs  |
+ | match     |-->| program   |-->| expr, stmt |-->| Live variables |
+ | Map, Set  |   | analysis? |   | CFG build  |   | Fixpoint loops |
+ | Functors  |   | Soundness |   | Visitors   |   | Worklist algo  |
+ | Parsing   |   | Lattices  |   | Lab 2      |   | Lab 3          |
+ +-----------+   +-----------+   +------------+   +----------------+
+                                                          |
+                                                          v
+                                  Module 5          Module 4
+                                Security Analysis   Abstract Interp.
+                                +----------------+  +----------------+
+                                | Taint analysis |  | Sign domain    |
+                                | Source/sink    |<-| Interval domain|
+                                | Sanitizers     |  | MakeEnv functor|
+                                | Lab 5          |  | Lab 4          |
+                                +----------------+  +----------------+</div>
+  <div class="cols">
+    <div>
+      <div class="callout-blue">
+        <strong>Exercise 2</strong> (ADTs) directly previews <code>Shared_ast.Ast_types</code> from Module 2.
+      </div>
+    </div>
+    <div>
+      <div class="callout-blue">
+        <strong>Exercise 4</strong> (Functors) directly previews <code>Abstract_domains.Abstract_env.MakeEnv</code> from Module 4.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== SLIDE 21: Key Takeaways ========== -->
+<div class="slide">
+  <h2>Key Takeaways</h2>
+  <div class="cols">
+    <div>
+      <h3>Language Fundamentals</h3>
+      <ul>
+        <li><strong>Everything is an expression</strong> &mdash; no statements, no null, no void</li>
+        <li><strong>Immutable by default</strong> &mdash; use <code>ref</code> only when needed</li>
+        <li><strong>Pattern matching</strong> is your primary control flow tool</li>
+        <li><strong>Type inference</strong> means annotations are optional but helpful</li>
+      </ul>
+      <h3>Data Structures</h3>
+      <ul>
+        <li><strong>ADTs</strong> for ASTs and abstract domain values</li>
+        <li><strong>StringMap</strong> for variable environments</li>
+        <li><strong>StringSet</strong> for tracking variable sets</li>
+        <li><strong>Records</strong> for structured data with named fields</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Module System</h3>
+      <ul>
+        <li><strong>Signatures</strong> define interfaces (like Java interfaces)</li>
+        <li><strong>Structures</strong> provide implementations</li>
+        <li><strong>Functors</strong> parameterize modules over other modules</li>
+        <li>The <code>LATTICE</code> + <code>MakeEnv</code> pattern recurs throughout the bootcamp</li>
+      </ul>
+      <h3>Parsing</h3>
+      <ul>
+        <li><code>ocamllex</code> for lexing (regex-based tokenization)</li>
+        <li><code>Menhir</code> for parsing (grammar rules producing AST nodes)</li>
+        <li>Precedence declarations resolve ambiguity</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ========== SLIDE 22: Next Module Preview ========== -->
+<div class="slide">
+  <h2>Next: Module 1 &mdash; Foundations</h2>
+  <p>Now that you are comfortable with OCaml, Module 1 introduces the <strong>theory</strong> behind program analysis.</p>
+  <div class="cols">
+    <div>
+      <h3>What you will learn</h3>
+      <ul>
+        <li>What is program analysis and why do we need it?</li>
+        <li>Static vs. dynamic analysis trade-offs</li>
+        <li>Soundness and completeness</li>
+        <li>The lattice-theoretic foundation of abstract interpretation</li>
+        <li>Fixpoint computation and the widening operator</li>
+      </ul>
+    </div>
+    <div>
+      <h3>How Module 0 prepared you</h3>
+      <table>
+        <tr><th>Module 0 Concept</th><th>Module 1+ Usage</th></tr>
+        <tr><td>ADTs + pattern matching</td><td>AST traversal</td></tr>
+        <tr><td>Map + Set</td><td>Dataflow facts</td></tr>
+        <tr><td><code>LATTICE</code> signature</td><td>Abstract domains</td></tr>
+        <tr><td><code>MakeEnv</code> functor</td><td>Abstract environments</td></tr>
+        <tr><td>Menhir parser</td><td>Lab 2 parser extension</td></tr>
+      </table>
+    </div>
+  </div>
+  <div class="callout-green">
+    <strong>Ready?</strong> Complete all 5 exercises, then move on to Module 1. If you get stuck, check the STUDENT_README for expected output and hints.
+  </div>
+</div>
+
+</div><!-- end .deck -->
+<div class="nav">
+  <button id="prev" onclick="go(-1)">&larr; Prev</button>
+  <button id="next" onclick="go(1)">Next &rarr;</button>
+</div>
+<script>
+  let cur = 0;
+  const slides = document.querySelectorAll('.slide');
+  const total = slides.length;
+  function show(n) {
+    slides.forEach(s => s.classList.remove('active'));
+    cur = Math.max(0, Math.min(n, total - 1));
+    slides[cur].classList.add('active');
+    document.getElementById('prev').disabled = cur === 0;
+    document.getElementById('next').disabled = cur === total - 1;
+    document.getElementById('counter').textContent = (cur + 1) + ' / ' + total;
+    document.getElementById('progress').style.width = ((cur + 1) / total * 100) + '%';
+  }
+  function go(d) { show(cur + d); }
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); go(1); }
+    if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); go(-1); }
+    if (e.key === 'Home') { e.preventDefault(); show(0); }
+    if (e.key === 'End') { e.preventDefault(); show(total - 1); }
+  });
+  let tx = 0;
+  document.addEventListener('touchstart', e => { tx = e.touches[0].clientX; });
+  document.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - tx;
+    if (Math.abs(dx) > 50) go(dx < 0 ? 1 : -1);
+  });
+  show(0);
+</script>
+</body>
+</html>

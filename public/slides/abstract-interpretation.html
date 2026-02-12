@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Module 4: Abstract Interpretation</title>
+<style>
+  :root {
+    --bg: #ffffff; --fg: #1a1a2e; --accent: #e94560; --accent2: #0f3460;
+    --accent3: #16213e; --code-bg: #f4f4f8; --border: #ddd;
+    --shadow: rgba(0,0,0,0.08); --green: #27ae60; --orange: #f39c12;
+    --red: #e74c3c; --blue: #2980b9;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: #f0f0f5; color: var(--fg); overflow: hidden; height: 100vh; }
+  .deck { position: relative; width: 100vw; height: 100vh; }
+  .slide { display: none; position: absolute; inset: 0; padding: 48px 64px; background: var(--bg); overflow-y: auto; animation: fadeIn 0.3s ease; }
+  .slide.active { display: flex; flex-direction: column; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: none; } }
+  h1 { font-size: 2.8em; color: var(--accent2); margin-bottom: 8px; font-weight: 700; }
+  h2 { font-size: 2em; color: var(--accent2); margin-bottom: 16px; border-bottom: 3px solid var(--accent); padding-bottom: 8px; display: inline-block; }
+  h3 { font-size: 1.3em; color: var(--accent3); margin: 12px 0 6px; }
+  p, li { font-size: 1.15em; line-height: 1.6; margin-bottom: 8px; }
+  ul, ol { padding-left: 28px; }
+  strong { color: var(--accent2); }
+  em { color: var(--accent); font-style: normal; font-weight: 600; }
+  pre { background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; font-size: 0.95em; line-height: 1.5; overflow-x: auto; margin: 12px 0; font-family: 'JetBrains Mono', 'Fira Code', 'SF Mono', monospace; }
+  code { font-family: 'JetBrains Mono', 'Fira Code', 'SF Mono', monospace; background: var(--code-bg); padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+  pre code { background: none; padding: 0; }
+  table { border-collapse: collapse; margin: 12px 0; font-size: 1em; width: auto; }
+  th, td { border: 1px solid var(--border); padding: 8px 14px; text-align: left; }
+  th { background: var(--accent2); color: white; font-weight: 600; }
+  tr:nth-child(even) { background: #f8f8fc; }
+  .diagram { background: var(--code-bg); border: 2px solid var(--accent2); border-radius: 8px; padding: 20px; font-family: 'JetBrains Mono', monospace; font-size: 0.95em; line-height: 1.6; white-space: pre; margin: 12px 0; overflow-x: auto; }
+  .callout { border-left: 4px solid var(--accent); background: #fff5f7; padding: 12px 16px; margin: 12px 0; border-radius: 0 8px 8px 0; }
+  .callout-green { border-left: 4px solid var(--green); background: #f0faf4; padding: 12px 16px; margin: 12px 0; border-radius: 0 8px 8px 0; }
+  .callout-blue { border-left: 4px solid var(--blue); background: #f0f6ff; padding: 12px 16px; margin: 12px 0; border-radius: 0 8px 8px 0; }
+  .cols { display: flex; gap: 32px; flex: 1; }
+  .cols > div { flex: 1; }
+  .title-slide { justify-content: center; align-items: center; text-align: center; background: linear-gradient(135deg, var(--accent2) 0%, var(--accent3) 100%); color: white; }
+  .title-slide h1 { color: white; font-size: 3.5em; border: none; }
+  .title-slide h2 { color: rgba(255,255,255,0.85); border: none; font-size: 1.6em; font-weight: 400; }
+  .title-slide p { color: rgba(255,255,255,0.7); font-size: 1.1em; }
+  .nav { position: fixed; bottom: 20px; right: 24px; display: flex; gap: 8px; z-index: 100; }
+  .nav button { background: var(--accent2); color: white; border: none; border-radius: 6px; padding: 10px 20px; font-size: 1em; cursor: pointer; transition: background 0.2s; }
+  .nav button:hover { background: var(--accent); }
+  .nav button:disabled { opacity: 0.3; cursor: default; }
+  .counter { position: fixed; bottom: 24px; left: 24px; font-size: 0.9em; color: #888; z-index: 100; }
+  .progress { position: fixed; top: 0; left: 0; height: 4px; background: var(--accent); transition: width 0.3s ease; z-index: 100; }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 0.85em; font-weight: 600; color: white; }
+  .badge-critical { background: var(--red); }
+  .badge-high { background: var(--orange); }
+  .badge-medium { background: var(--blue); }
+  .part-header { justify-content: center; align-items: center; text-align: center; background: linear-gradient(135deg, var(--accent3) 0%, var(--accent2) 100%); color: white; }
+  .part-header h2 { color: white; border-bottom: 3px solid var(--accent); font-size: 2.4em; }
+  .part-header p { color: rgba(255,255,255,0.8); font-size: 1.2em; margin-top: 12px; }
+</style>
+</head>
+<body>
+<div class="progress" id="progress"></div>
+<div class="counter" id="counter"></div>
+<div class="deck" id="deck">
+
+<!-- Slide 1: Title -->
+<div class="slide title-slide">
+  <h1>Abstract Interpretation</h1>
+  <h2>Module 4 &mdash; Program Analysis Bootcamp</h2>
+  <p><strong style="color:rgba(255,255,255,0.9)">Instructor:</strong> Weihao &nbsp;|&nbsp; <strong style="color:rgba(255,255,255,0.9)">Office Hours:</strong> By appointment, HH227</p>
+</div>
+
+<!-- Slide 2: Learning Objectives -->
+<div class="slide">
+  <h2>Learning Objectives</h2>
+  <ul>
+    <li><strong>Explain</strong> abstract interpretation as a framework for sound program analysis</li>
+    <li><strong>Implement</strong> abstract domains (sign, constant, interval) satisfying the <code>ABSTRACT_DOMAIN</code> signature</li>
+    <li><strong>Formalize</strong> Galois connections and verify soundness properties</li>
+    <li><strong>Apply</strong> widening operators to guarantee termination on infinite-height lattices</li>
+    <li><strong>Build</strong> an abstract interpreter that detects division-by-zero and other safety violations</li>
+    <li><strong>Compare</strong> domains along precision/cost/termination axes</li>
+  </ul>
+</div>
+
+<!-- Slide 3: Prerequisites Review -->
+<div class="slide">
+  <h2>Prerequisites Review</h2>
+  <h3>From Module 3 -- Dataflow Analysis:</h3>
+  <ul>
+    <li>Lattices: bottom, top, join, meet, partial orders</li>
+    <li>Transfer functions: how statements transform lattice values</li>
+    <li>Fixpoint iteration: iterate until nothing changes</li>
+    <li>Forward/backward analysis, may/must analysis</li>
+  </ul>
+  <div class="callout-blue" style="margin-top: 16px;">
+    <strong>The key insight from Module 3:</strong>
+    <pre><code>Analysis = Lattice + Transfer Functions + Fixpoint Solver</code></pre>
+    <p>Module 4 keeps the same solver but changes <em>what</em> the lattice tracks.</p>
+  </div>
+</div>
+
+<!-- Slide 4: The Leap from Module 3 -->
+<div class="slide">
+  <h2>The Leap from Module 3</h2>
+  <div class="cols">
+    <div>
+      <h3>Module 3 tracked <strong>sets of names</strong> (definitions, variables):</h3>
+<pre><code>Reaching Defs:  {d1, d3, d5}     "which assignments reach here?"
+Live Variables: {x, y, temp}     "which variables are used later?"</code></pre>
+    </div>
+    <div>
+      <h3>Module 4 tracks <strong>abstract values</strong> (signs, constants, intervals):</h3>
+<pre><code>Sign Analysis:  x -&gt; Pos, y -&gt; Neg     "what sign does x have?"
+Constant Prop:  x -&gt; Const(42)         "is x always 42?"
+Interval:       x -&gt; [0, 100]          "what range is x in?"</code></pre>
+    </div>
+  </div>
+  <div class="callout-green" style="margin-top: 16px;">
+    <p>Same framework, richer information, deeper questions.</p>
+  </div>
+</div>
+
+<!-- Slide 5: Motivating Example -->
+<div class="slide">
+  <h2>Motivating Example: Can This Crash?</h2>
+<pre><code>let analyze x y =
+  let a = x * x in         (* a = ? *)
+  let b = a + 1 in         (* b = ? *)
+  let c = y - y in         (* c = ? *)
+  let result = b / c in    (* DIVISION BY ZERO? *)
+  result</code></pre>
+  <div class="cols" style="margin-top: 16px;">
+    <div>
+      <div class="callout">
+        <h3>Module 3 (reaching defs):</h3>
+        <p>"The definition of c at line 3 reaches line 4."</p>
+        <p>That's true, but doesn't answer the safety question.</p>
+      </div>
+    </div>
+    <div>
+      <div class="callout-green">
+        <h3>Module 4 (sign analysis):</h3>
+        <p>"c = Zero, so b/c is a division by zero."</p>
+        <p>Now we can detect the bug <em>before</em> running the program.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Slide 6: Concrete vs. Abstract Semantics -->
+<div class="slide">
+  <h2>Concrete vs. Abstract Semantics</h2>
+  <div class="diagram">Concrete World                    Abstract World
+(exact values)                    (approximations)
+
+  x = 42                           x -&gt; Pos
+  y = -7                           y -&gt; Neg
+  x + y = 35                       Pos + Neg = Top (don't know)
+  x * x = 1764                     Pos * Pos = Pos (still positive)</div>
+  <div class="callout" style="margin-top: 16px;">
+    <p><strong>The deal:</strong> We trade precision for decidability.</p>
+    <ul>
+      <li><strong>Concrete:</strong> exact but undecidable (halting problem)</li>
+      <li><strong>Abstract:</strong> approximate but always terminates and is <em>sound</em></li>
+    </ul>
+  </div>
+  <div class="callout-green">
+    <p><strong>Sound</strong> = if the analysis says "safe", the program truly is safe.
+    We may get false alarms, but we never miss real bugs.</p>
+  </div>
+</div>
+
+<!-- Slide 7: Galois Connections: The Formal Bridge -->
+<div class="slide">
+  <h2>Galois Connections: The Formal Bridge</h2>
+  <p>How do we relate concrete values to abstract values?</p>
+  <div class="diagram">Concrete Domain (C)              Abstract Domain (A)
+  (sets of integers)                 (signs)
+
+     {1, 2, 3}    --- alpha ---&gt;     Pos
+     {-1, 0, 5}   --- alpha ---&gt;     Top
+     {0}           --- alpha ---&gt;     Zero
+     Pos           --- gamma ---&gt;     {1, 2, 3, ...}
+     Top           --- gamma ---&gt;     Z (all integers)</div>
+  <ul style="margin-top: 16px;">
+    <li><strong>alpha (abstraction):</strong> concrete set -&gt; best abstract value</li>
+    <li><strong>gamma (concretization):</strong> abstract value -&gt; set of concrete values it represents</li>
+  </ul>
+</div>
+
+<!-- Slide 8: Galois Connections: Formal Definition -->
+<div class="slide">
+  <h2>Galois Connections: Formal Definition</h2>
+  <p>A <strong>Galois connection</strong> (C, alpha, gamma, A) requires:</p>
+<pre><code>For all c in C, a in A:
+    alpha(c) &lt;= a   iff   c &lt;= gamma(a)</code></pre>
+  <p>This adjunction property guarantees:</p>
+  <ol>
+    <li><strong>alpha . gamma &gt;= id</strong> (abstracting then concretizing may lose info)</li>
+    <li><strong>gamma . alpha &gt;= id</strong> (every concrete value is captured)</li>
+    <li><strong>alpha</strong> is monotone (bigger input -&gt; bigger output)</li>
+    <li><strong>gamma</strong> is monotone (bigger abstract value -&gt; bigger concrete set)</li>
+  </ol>
+  <div class="diagram">        alpha
+   C  ----------&gt;  A
+   |                |
+   | gamma.alpha    | alpha.gamma
+   |   &gt;= id        |   &gt;= id
+   v                v
+   C  &lt;----------  A
+        gamma</div>
+</div>
+
+<!-- Slide 9: Soundness via Over-Approximation -->
+<div class="slide">
+  <h2>Soundness via Over-Approximation</h2>
+  <p>Abstract interpretation is <strong>sound</strong> because it over-approximates:</p>
+<pre><code>If the concrete computation produces value v,
+then v is in gamma(abstract_result).</code></pre>
+  <div class="diagram">         Concrete:  {42}
+              |
+           subset of
+              |
+              v
+     gamma(Pos) = {1, 2, 3, ...}     42 is in here -- SOUND</div>
+  <div class="cols" style="margin-top: 16px;">
+    <div>
+      <div class="callout-green">
+        <p><strong>False positives</strong> are possible (we may warn about things that cannot happen).</p>
+      </div>
+    </div>
+    <div>
+      <div class="callout">
+        <p><strong>False negatives</strong> are impossible (we never miss a real problem).</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Slide 10: Connecting to Module 3's Framework -->
+<div class="slide">
+  <h2>Connecting to Module 3's Framework</h2>
+  <p>The same fixpoint solver works -- we just swap the lattice:</p>
+  <div class="diagram">Module 3:                              Module 4:
+  Lattice = PowersetLattice              Lattice = ABSTRACT_DOMAIN
+  Values  = sets of def names           Values  = abstract values (signs, etc.)
+  Transfer = gen/kill                    Transfer = abstract eval of stmts
+  Merge   = set union                   Merge   = pointwise join of envs
+  Solver  = iterate until fixpoint      Solver  = iterate until fixpoint</div>
+<pre><code>(* Module 3 style: *)
+module type LATTICE = sig
+  type t
+  val bottom : t
+  val top : t
+  val join : t -&gt; t -&gt; t
+  val meet : t -&gt; t -&gt; t
+  val equal : t -&gt; t -&gt; bool
+end
+
+(* Module 4 extends with: *)
+module type ABSTRACT_DOMAIN = sig
+  include LATTICE  (* inherits everything above *)
+  val leq : t -&gt; t -&gt; bool    (* partial order *)
+  val widen : t -&gt; t -&gt; t     (* termination guarantee *)
+end</code></pre>
+</div>
+
+<!-- Slide 11: The ABSTRACT_DOMAIN Module Type -->
+<div class="slide">
+  <h2>The <code>ABSTRACT_DOMAIN</code> Module Type</h2>
+<pre><code>module type ABSTRACT_DOMAIN = sig
+  type t
+
+  val bottom : t          (* least element: unreachable / no info *)
+  val top    : t          (* greatest element: any value possible *)
+
+  val join  : t -&gt; t -&gt; t  (* least upper bound *)
+  val meet  : t -&gt; t -&gt; t  (* greatest lower bound *)
+  val leq   : t -&gt; t -&gt; bool  (* partial order test *)
+  val equal : t -&gt; t -&gt; bool  (* equality *)
+
+  val widen : t -&gt; t -&gt; t  (* widening: guarantees termination *)
+
+  val to_string : t -&gt; string
+end</code></pre>
+  <div class="callout-blue">
+    <p>Every domain in Module 4 (Sign, Constant, Interval) implements this signature.</p>
+    <p>The abstract interpreter is a <strong>functor</strong> parameterized by <code>ABSTRACT_DOMAIN</code>.</p>
+  </div>
+</div>
+
+<!-- Slide 12: Part 2 Header - The Sign Domain -->
+<div class="slide part-header">
+  <h2>Part 2: The Sign Domain</h2>
+  <p>Track the sign of every integer variable</p>
+</div>
+
+<!-- Slide 13: The Sign Domain -->
+<div class="slide">
+  <h2>The Sign Domain</h2>
+  <p><strong>Idea:</strong> Track the sign of every integer variable.</p>
+  <div class="diagram">         Top           "could be anything"
+        / | \
+     Neg Zero Pos      "definitely negative/zero/positive"
+        \ | /
+        Bot             "unreachable"</div>
+  <p>This is a <strong>flat lattice</strong> of height 3 with 5 elements.</p>
+  <div class="callout-green">
+    <h3>Finite height means:</h3>
+    <ul>
+      <li>No widening needed (ascending chains are bounded)</li>
+      <li>Fixpoint always terminates</li>
+      <li>Good first domain to implement</li>
+    </ul>
+  </div>
+</div>
+
+<!-- Slide 14: Sign Lattice: Abstract Arithmetic -->
+<div class="slide">
+  <h2>Sign Lattice: Abstract Arithmetic</h2>
+  <p>How does arithmetic work on signs?</p>
+  <div class="cols">
+    <div>
+      <h3>Addition:</h3>
+<pre><code> +    | Bot  Neg  Zero  Pos  Top
+------+----------------------------
+ Bot  | Bot  Bot  Bot   Bot  Bot
+ Neg  | Bot  Neg  Neg   Top  Top
+ Zero | Bot  Neg  Zero  Pos  Top
+ Pos  | Bot  Top  Pos   Pos  Top
+ Top  | Bot  Top  Top   Top  Top</code></pre>
+    </div>
+    <div>
+      <h3>Multiplication:</h3>
+<pre><code> *    | Bot  Neg   Zero  Pos  Top
+------+-----------------------------
+ Bot  | Bot  Bot   Bot   Bot  Bot
+ Neg  | Bot  Pos   Zero  Neg  Top
+ Zero | Bot  Zero  Zero  Zero Zero
+ Pos  | Bot  Neg   Zero  Pos  Top
+ Top  | Bot  Top   Zero  Top  Top</code></pre>
+    </div>
+  </div>
+  <div class="callout-blue" style="margin-top: 12px;">
+    <p><strong>Key:</strong> <code>Neg * Neg = Pos</code> (negative times negative is positive).</p>
+  </div>
+</div>
+
+<!-- Slide 15: Sign Domain: Transfer Functions -->
+<div class="slide">
+  <h2>Sign Domain: Transfer Functions</h2>
+  <p>For each statement, compute the abstract effect:</p>
+<pre><code>(* Assignment: evaluate RHS in abstract environment *)
+transfer (Assign (x, expr)) env =
+  let v = abstract_eval expr env in
+  update x v env
+
+(* If: join environments from both branches *)
+transfer (If (cond, then_body, else_body)) env =
+  let env_then = transfer_stmts then_body env in
+  let env_else = transfer_stmts else_body env in
+  join_env env_then env_else</code></pre>
+  <p><strong>abstract_eval</strong> recursively evaluates expressions using abstract arithmetic:</p>
+<pre><code>abstract_eval (BinOp (Add, e1, e2)) env =
+  abstract_add (abstract_eval e1 env) (abstract_eval e2 env)</code></pre>
+</div>
+
+<!-- Slide 16: Sign Domain: Worked Example -->
+<div class="slide">
+  <h2>Sign Domain: Worked Example</h2>
+<pre><code>let a = 5 in       (* a -&gt; Pos *)
+let b = -3 in      (* b -&gt; Neg *)
+let c = a + b in   (* c -&gt; Pos + Neg = Top *)
+let d = a * a in   (* d -&gt; Pos * Pos = Pos *)
+let e = b * b in   (* e -&gt; Neg * Neg = Pos *)
+let f = a * b in   (* f -&gt; Pos * Neg = Neg *)</code></pre>
+  <div class="diagram">After each statement:
+  a: Pos    b: Neg    c: Top    d: Pos    e: Pos    f: Neg</div>
+  <div class="callout" style="margin-top: 12px;">
+    <p><strong>Limitation:</strong> <code>c = 5 + (-3) = 2</code> is actually <code>Pos</code>, but sign analysis says <code>Top</code> because it doesn't track magnitudes.</p>
+  </div>
+</div>
+
+<!-- Slide 17: Sign Domain: Precision Limits -->
+<div class="slide">
+  <h2>Sign Domain: Precision Limits</h2>
+<pre><code>let x = read_int () in    (* x -&gt; Top *)
+let y = x * x in          (* y -&gt; Top * Top = Top *)</code></pre>
+  <p>We know <code>x * x &gt;= 0</code> for all integers, so <code>y</code> should be <strong>non-negative</strong>.
+  But the sign domain has no <code>NonNeg</code> element -- the best it can say is <code>Top</code>.</p>
+  <div class="diagram">Concrete: x*x is in {0, 1, 4, 9, 16, ...}
+Sign says: Top (could be anything)
+Truth: always &gt;= 0</div>
+  <div class="callout">
+    <p>This is a <strong>precision loss</strong> inherent to the sign abstraction.
+    More precise domains (intervals) can capture this.</p>
+  </div>
+</div>
+
+<!-- Slide 18: Part 3 Header - Constant Propagation -->
+<div class="slide part-header">
+  <h2>Part 3: Constant Propagation</h2>
+  <p>Track whether a variable always holds the same constant</p>
+</div>
+
+<!-- Slide 19: Constant Propagation -->
+<div class="slide">
+  <h2>Constant Propagation</h2>
+  <div class="diagram">              Top             "not a constant"
+         /  |  |  |  \
+  ... Const(-1) Const(0) Const(1) ...
+         \  |  |  |  /
+              Bot             "unreachable"</div>
+  <p>This is the <strong>flat constant lattice</strong> -- infinite width but height 3.</p>
+  <h3>Key operations:</h3>
+<pre><code>join(Const(3), Const(3)) = Const(3)    (same constant -- keep it)
+join(Const(3), Const(5)) = Top         (different constants -- give up)
+join(Const(n), Bot)      = Const(n)    (only one branch is reachable)</code></pre>
+</div>
+
+<!-- Slide 20: Constant Propagation: Worked Example -->
+<div class="slide">
+  <h2>Constant Propagation: Worked Example</h2>
+<pre><code>let x = 5 in                 (* x -&gt; Const(5) *)
+let y = 3 in                 (* y -&gt; Const(3) *)
+let z = x + y in             (* z -&gt; Const(5) + Const(3) = Const(8) *)
+let w =
+  if condition then
+    z + 1                     (* w -&gt; Const(9) on this path *)
+  else
+    z - 1                     (* w -&gt; Const(7) on this path *)
+in
+(* After merge: w -&gt; join(Const(9), Const(7)) = Top *)
+(* But z is still Const(8) on both paths! *)</code></pre>
+  <div class="callout-blue">
+    <h3>Constant propagation vs. reaching definitions:</h3>
+    <ul>
+      <li><strong>Reaching defs</strong> says: "d1 (z=x+y) reaches the use of z"</li>
+      <li><strong>Constant prop</strong> says: "z is always 8 -- you can replace Var(z) with IntLit(8)"</li>
+    </ul>
+  </div>
+</div>
+
+<!-- Slide 21: Constant Propagation vs. Reaching Definitions -->
+<div class="slide">
+  <h2>Constant Propagation vs. Reaching Definitions</h2>
+  <table>
+    <tr>
+      <th>Property</th>
+      <th>Reaching Definitions</th>
+      <th>Constant Propagation</th>
+    </tr>
+    <tr>
+      <td><strong>Tracks</strong></td>
+      <td>Sets of definition labels</td>
+      <td>Actual values</td>
+    </tr>
+    <tr>
+      <td><strong>Merge</strong></td>
+      <td>Union (may analysis)</td>
+      <td>Join on flat lattice</td>
+    </tr>
+    <tr>
+      <td><strong>Result</strong></td>
+      <td>"Which assignments reach here?"</td>
+      <td>"Is this always the same constant?"</td>
+    </tr>
+    <tr>
+      <td><strong>Use case</strong></td>
+      <td>Dead code elimination</td>
+      <td>Constant folding</td>
+    </tr>
+  </table>
+  <div class="callout-green" style="margin-top: 16px;">
+    <p>Constant propagation is <strong>strictly more informative</strong> for optimization, but both answer different questions.</p>
+  </div>
+</div>
+
+<!-- Slide 22: Part 4 Header - The Interval Domain -->
+<div class="slide part-header">
+  <h2>Part 4: The Interval Domain</h2>
+  <p>Track the range of possible values for each variable</p>
+</div>
+
+<!-- Slide 23: The Interval Domain -->
+<div class="slide">
+  <h2>The Interval Domain</h2>
+  <p><strong>Idea:</strong> Track the range of possible values for each variable.</p>
+<pre><code>x -&gt; [0, 100]      "x is between 0 and 100 inclusive"
+y -&gt; [-inf, 0]     "y is non-positive"
+z -&gt; [42, 42]      "z is exactly 42" (constant)</code></pre>
+  <div class="callout-green">
+    <h3>Why intervals?</h3>
+    <ul>
+      <li>More precise than signs: <code>[0, +inf]</code> captures "non-negative"</li>
+      <li>More flexible than constants: <code>[1, 10]</code> is useful but not a single constant</li>
+      <li>Directly answers range queries: "Can x be negative?" "Can y be zero?"</li>
+    </ul>
+  </div>
+</div>
+
+<!-- Slide 24: Interval Operations -->
+<div class="slide">
+  <h2>Interval Operations</h2>
+<pre><code>[a, b] + [c, d] = [a+c, b+d]
+[a, b] - [c, d] = [a-d, b-c]
+[a, b] * [c, d] = [min(ac,ad,bc,bd), max(ac,ad,bc,bd)]
+
+join([a,b], [c,d]) = [min(a,c), max(b,d)]
+meet([a,b], [c,d]) = [max(a,c), min(b,d)]   (Bot if empty)</code></pre>
+  <h3>Example:</h3>
+<pre><code>  [1, 5] + [2, 3] = [3, 8]
+  [1, 5] * [-1, 2] = [min(-5,-1,2,10), max(-5,-1,2,10)]
+                    = [-5, 10]
+
+  join([1, 5], [8, 10]) = [1, 10]
+  meet([1, 5], [3, 8])  = [3, 5]</code></pre>
+</div>
+
+<!-- Slide 25: The Widening Problem -->
+<div class="slide">
+  <h2>The Widening Problem</h2>
+  <p>Intervals have <strong>infinite height</strong> -- ascending chains may never stabilize:</p>
+  <div class="diagram">Iteration 1:  x -&gt; [0, 0]
+Iteration 2:  x -&gt; [0, 1]     (joined with loop iteration)
+Iteration 3:  x -&gt; [0, 2]
+Iteration 4:  x -&gt; [0, 3]
+...
+Iteration n:  x -&gt; [0, n-1]   (never converges!)</div>
+  <p>This happens in loops where a counter increments:</p>
+<pre><code>let i = ref 0 in
+while !i &lt; 100 do
+  i := !i + 1
+done</code></pre>
+  <div class="callout">
+    <p>Without intervention, fixpoint iteration would run forever.</p>
+  </div>
+</div>
+
+<!-- Slide 26: The Widening Operator -->
+<div class="slide">
+  <h2>The Widening Operator</h2>
+  <p><strong>Widening</strong> (<code>widen</code>) accelerates convergence by jumping to a stable value:</p>
+<pre><code>widen([a, b], [c, d]) =
+  [ if c &lt; a then -inf else a,
+    if d &gt; b then +inf else b ]</code></pre>
+  <p>If the new bound exceeds the old bound, jump to infinity:</p>
+  <div class="diagram">Iteration 1:  x -&gt; [0, 0]
+Iteration 2:  widen([0,0], [0,1]) = [0, +inf]   (upper bound grew -&gt; jump to +inf)
+Iteration 3:  [0, +inf] is stable -- fixpoint reached!</div>
+  <div class="callout-blue">
+    <p><strong>Trade-off:</strong> Widening may lose precision (we get <code>[0, +inf]</code> instead of <code>[0, 99]</code>),
+    but it guarantees termination in finitely many steps.</p>
+  </div>
+</div>
+
+<!-- Slide 27: Widening: Worked Example -->
+<div class="slide">
+  <h2>Widening: Worked Example</h2>
+<pre><code>let i = ref 0 in           (* i -&gt; [0, 0] *)
+while !i &lt; 10 do           (* loop header *)
+  i := !i + 1              (* i -&gt; i + [1, 1] *)
+done</code></pre>
+  <div class="cols">
+    <div>
+      <h3>Without widening</h3>
+<pre><code>Iteration 1:   i -&gt; [0, 0]
+Iteration 2:   i -&gt; [0, 1]
+Iteration 3:   i -&gt; [0, 2]
+...
+Iteration 11:  i -&gt; [0, 10]
+Iteration 12:  (stable)
+
+Steps to converge: 11</code></pre>
+    </div>
+    <div>
+      <h3>With widening</h3>
+<pre><code>Iteration 1:   i -&gt; [0, 0]
+Iteration 2:   i -&gt; widen([0,0],[0,1])
+              = [0, +inf]
+Iteration 3:   i -&gt; [0, +inf] (stable!)
+
+
+
+Steps to converge: 2</code></pre>
+    </div>
+  </div>
+  <div class="callout" style="margin-top: 12px;">
+    <p>After the loop: <code>i -&gt; [0, +inf]</code> (with widening) vs <code>i -&gt; [0, 10]</code> (without).
+    Widening is less precise but always terminates.</p>
+  </div>
+</div>
+
+<!-- Slide 28: Division-by-Zero Detection with Intervals -->
+<div class="slide">
+  <h2>Division-by-Zero Detection with Intervals</h2>
+<pre><code>let a = read_int () in          (* a -&gt; [-inf, +inf] *)
+let b = a - a in                (* b -&gt; [-inf,+inf] - [-inf,+inf] = [-inf,+inf] *)
+let c = 10 / b in              (* b might be 0 -- WARNING! *)
+
+let x = 5 in                    (* x -&gt; [5, 5] *)
+let y = x + 1 in                (* y -&gt; [6, 6] *)
+let z = 10 / y in              (* y is [6,6], 0 not in range -- SAFE *)</code></pre>
+  <div class="callout-green">
+    <p><strong>Rule:</strong> Division <code>a / b</code> is safe iff <code>0</code> is not in <code>gamma(abstract_b)</code>.</p>
+    <p>For intervals: safe iff the interval does not contain 0.</p>
+  </div>
+<pre><code>contains_zero([a, b]) = (a &lt;= 0) &amp;&amp; (0 &lt;= b)</code></pre>
+</div>
+
+<!-- Slide 29: Part 5 Header - Domain Comparison -->
+<div class="slide part-header">
+  <h2>Part 5: Domain Comparison</h2>
+  <p>Precision, cost, and termination trade-offs</p>
+</div>
+
+<!-- Slide 30: Domain Comparison -->
+<div class="slide">
+  <h2>Domain Comparison</h2>
+  <table>
+    <tr>
+      <th>Property</th>
+      <th>Sign</th>
+      <th>Constant</th>
+      <th>Interval</th>
+    </tr>
+    <tr>
+      <td><strong>Height</strong></td>
+      <td>3 (finite)</td>
+      <td>3 (finite)</td>
+      <td>infinite</td>
+    </tr>
+    <tr>
+      <td><strong>Width</strong></td>
+      <td>5 elements</td>
+      <td>infinite</td>
+      <td>infinite</td>
+    </tr>
+    <tr>
+      <td><strong>Widening needed?</strong></td>
+      <td>No</td>
+      <td>No</td>
+      <td>Yes</td>
+    </tr>
+    <tr>
+      <td><strong>Detects div-by-zero?</strong></td>
+      <td>Yes (Zero)</td>
+      <td>Yes (Const 0)</td>
+      <td>Yes (contains 0)</td>
+    </tr>
+    <tr>
+      <td><strong>x*x &gt;= 0?</strong></td>
+      <td>No (says Top)</td>
+      <td>Only if x is const</td>
+      <td>Yes ([0, +inf])</td>
+    </tr>
+    <tr>
+      <td><strong>Typical use</strong></td>
+      <td>Quick safety</td>
+      <td>Constant folding</td>
+      <td>Range analysis</td>
+    </tr>
+  </table>
+  <div class="callout-blue" style="margin-top: 16px;">
+    <p><strong>More precise domains are more expensive:</strong></p>
+    <pre><code>Sign &lt; Interval &lt; Concrete
+ (fast)  (medium)   (undecidable)</code></pre>
+  </div>
+</div>
+
+<!-- Slide 31: The Hierarchy of Abstractions -->
+<div class="slide">
+  <h2>The Hierarchy of Abstractions</h2>
+  <div class="diagram">                      Concrete Semantics
+                     (all possible values)
+                           |
+                    gamma  |  alpha
+                           v
+                    Interval Domain
+                  ([lo, hi] ranges)
+                           |
+                    gamma  |  alpha
+                           v
+                      Sign Domain
+                  (Neg, Zero, Pos, Top)
+                           |
+                    gamma  |  alpha
+                           v
+                   Trivial Domain
+                      (just Top)</div>
+  <div class="callout-green" style="margin-top: 16px;">
+    <p>Each step up the chain:</p>
+    <ul>
+      <li><strong>Loses precision</strong> (more abstract)</li>
+      <li><strong>Gains efficiency</strong> (smaller lattice, faster convergence)</li>
+      <li><strong>Maintains soundness</strong> (Galois connections compose)</li>
+    </ul>
+  </div>
+</div>
+
+<!-- Slide 32: Abstract Interpretation in Practice -->
+<div class="slide">
+  <h2>Abstract Interpretation in Practice</h2>
+  <p>Real-world tools built on abstract interpretation:</p>
+  <table>
+    <tr>
+      <th>Tool</th>
+      <th>Domain</th>
+      <th>What it finds</th>
+    </tr>
+    <tr>
+      <td><strong>Astree</strong></td>
+      <td>Relational intervals</td>
+      <td>Buffer overflows, div-by-zero in avionics (Airbus A380)</td>
+    </tr>
+    <tr>
+      <td><strong>Infer</strong></td>
+      <td>Separation logic</td>
+      <td>Memory leaks, null pointer derefs (Facebook)</td>
+    </tr>
+    <tr>
+      <td><strong>SLAM</strong></td>
+      <td>Predicate abstraction</td>
+      <td>API protocol violations (Windows drivers)</td>
+    </tr>
+    <tr>
+      <td><strong>Polyspace</strong></td>
+      <td>Intervals + octagons</td>
+      <td>Runtime errors in embedded C/C++</td>
+    </tr>
+    <tr>
+      <td><strong>Frama-C</strong></td>
+      <td>Multiple domains</td>
+      <td>Value analysis for safety-critical C</td>
+    </tr>
+  </table>
+  <div class="callout" style="margin-top: 16px;">
+    <p><strong>Astree</strong> proved the absence of all runtime errors in the A380 flight control software -- 132,000 lines of C, zero false alarms.</p>
+  </div>
+</div>
+
+<!-- Slide 33: Summary and Key Takeaways -->
+<div class="slide">
+  <h2>Summary and Key Takeaways</h2>
+  <div class="diagram">Source Code  -&gt;  AST  -&gt;  CFG  -&gt;  Abstract Interpretation  -&gt;  Safety Proof
+                                          |
+                          +---------------+---------------+
+                          |               |               |
+                      Sign Domain   Constant Domain  Interval Domain
+                      (fast, coarse) (good for opt)  (precise, needs widen)</div>
+  <h3>Key ideas:</h3>
+  <ol>
+    <li>Abstract interpretation replaces concrete values with abstract summaries</li>
+    <li>Galois connections formalize the concrete-abstract relationship</li>
+    <li>Soundness = the analysis never misses a real error</li>
+    <li>Widening guarantees termination for infinite-height domains</li>
+    <li>The abstract interpreter is a functor -- same code, different domains</li>
+  </ol>
+  <div class="callout-green" style="margin-top: 12px;">
+    <p><strong>From Module 3 to Module 4:</strong> Same solver + richer lattice = deeper analysis.</p>
+  </div>
+</div>
+
+<!-- Slide 34: Additional Resources -->
+<div class="slide">
+  <h2>Additional Resources</h2>
+  <h3>Primary Reading:</h3>
+  <ul>
+    <li>Cousot &amp; Cousot, <em>Abstract Interpretation: A Unified Lattice Model</em> (1977)</li>
+    <li><a href="https://cs.au.dk/~amoeller/spa/" style="color: var(--blue)">Static Program Analysis</a> -- Moeller &amp; Schwartzbach, Chapters 5-7</li>
+    <li>Rival &amp; Yi, <em>Introduction to Static Analysis</em> (MIT Press)</li>
+  </ul>
+  <h3>Practice:</h3>
+  <ul>
+    <li>Implement all three domains (sign, constant, interval)</li>
+    <li>Verify Galois connection properties on paper and in code</li>
+    <li>Run your abstract interpreter on sample programs and compare domain precision</li>
+  </ul>
+  <h3>Deep dive:</h3>
+  <ul>
+    <li>Widening strategies: delayed widening, widening with thresholds</li>
+    <li>Reduced product of domains (combine sign + interval)</li>
+    <li>Relational domains: octagons, polyhedra</li>
+  </ul>
+</div>
+
+</div>
+<div class="nav">
+  <button id="prev" onclick="go(-1)">&larr; Prev</button>
+  <button id="next" onclick="go(1)">Next &rarr;</button>
+</div>
+<script>
+  let cur = 0;
+  const slides = document.querySelectorAll('.slide');
+  const total = slides.length;
+  function show(n) {
+    slides.forEach(s => s.classList.remove('active'));
+    cur = Math.max(0, Math.min(n, total - 1));
+    slides[cur].classList.add('active');
+    document.getElementById('prev').disabled = cur === 0;
+    document.getElementById('next').disabled = cur === total - 1;
+    document.getElementById('counter').textContent = (cur + 1) + ' / ' + total;
+    document.getElementById('progress').style.width = ((cur + 1) / total * 100) + '%';
+  }
+  function go(d) { show(cur + d); }
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); go(1); }
+    if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); go(-1); }
+    if (e.key === 'Home') { e.preventDefault(); show(0); }
+    if (e.key === 'End') { e.preventDefault(); show(total - 1); }
+  });
+  let tx = 0;
+  document.addEventListener('touchstart', e => { tx = e.touches[0].clientX; });
+  document.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - tx;
+    if (Math.abs(dx) > 50) go(dx < 0 ? 1 : -1);
+  });
+  show(0);
+</script>
+</body>
+</html>
