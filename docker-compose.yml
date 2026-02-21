@@ -9,6 +9,7 @@ services:
       - NEXTAUTH_URL=${NEXTAUTH_URL}
       - DB_PATH=/data/pa-bootcamp.db
       - CLASS_JOIN_CODE=${CLASS_JOIN_CODE}
+      - AUTH_TRUST_HOST=true
     volumes:
       - sqlite_data:/data
     restart: unless-stopped
