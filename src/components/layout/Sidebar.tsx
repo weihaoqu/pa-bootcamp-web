@@ -5,6 +5,23 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { MODULES } from "@/lib/modules";
 
+const LEARN_LABELS: Record<string, string> = {
+  "module0-warmup": "OCaml Crash Course",
+  "module2-ast": "Understanding ASTs",
+  "module3-static-analysis": "Understanding Static Analysis",
+  "module4-abstract-interpretation": "Understanding Abstract Interpretation",
+  "module5-security-analysis": "Understanding Security Analysis",
+  "module6-tools-integration": "Building Analysis Tools",
+};
+
+const EXPLORE_LABELS: Record<string, string> = {
+  "module2-ast": "AST Explorer",
+  "module3-static-analysis": "CFG Explorer",
+  "module4-abstract-interpretation": "Abstract Interpreter Explorer",
+  "module5-security-analysis": "Security Analysis Explorer",
+  "module6-tools-integration": "Pipeline Explorer",
+};
+
 export default function Sidebar() {
   const pathname = usePathname();
   const [expandedModule, setExpandedModule] = useState<string | null>(() => {
@@ -77,6 +94,34 @@ export default function Sidebar() {
                         Student Guide
                       </Link>
                     </li>
+                    {mod.hasLearn && (
+                      <li>
+                        <Link
+                          href={`/modules/${mod.slug}/learn`}
+                          className={`block rounded px-2 py-1 text-xs ${
+                            pathname === `/modules/${mod.slug}/learn`
+                              ? "font-medium text-accent-red"
+                              : "text-slate-500 hover:text-navy"
+                          }`}
+                        >
+                          {LEARN_LABELS[mod.slug] || "Before You Code"}
+                        </Link>
+                      </li>
+                    )}
+                    {mod.hasExplore && (
+                      <li>
+                        <Link
+                          href={`/modules/${mod.slug}/explore`}
+                          className={`block rounded px-2 py-1 text-xs ${
+                            pathname === `/modules/${mod.slug}/explore`
+                              ? "font-medium text-accent-red"
+                              : "text-slate-500 hover:text-navy"
+                          }`}
+                        >
+                          {EXPLORE_LABELS[mod.slug] || "Analysis Playground"}
+                        </Link>
+                      </li>
+                    )}
                     <li>
                       <Link
                         href={`/modules/${mod.slug}/slides`}

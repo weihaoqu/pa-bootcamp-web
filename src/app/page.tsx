@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { MODULES, LABS } from "@/lib/modules";
+import ConceptMap from "@/components/content/ConceptMap";
+import RepoSubmitCard from "@/components/RepoSubmitCard";
 
 export default function Home() {
   const totalExercises = MODULES.reduce(
@@ -35,6 +37,9 @@ export default function Home() {
           </Link>
         </div>
       </div>
+
+      {/* Repo submit (students only) */}
+      <RepoSubmitCard />
 
       {/* How it works */}
       <div className="mb-10 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -109,6 +114,9 @@ export default function Home() {
           </div>
         ))}
       </div>
+
+      {/* Concept Map */}
+      <ConceptMap />
 
       {/* Module Preview */}
       <h2 className="mb-4 text-xl font-bold text-navy">Course Modules</h2>

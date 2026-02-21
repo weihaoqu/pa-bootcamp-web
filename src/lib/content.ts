@@ -81,7 +81,7 @@ function readOCamlFiles(dir: string, prefix: string): FileEntry[] {
   const files: FileEntry[] = [];
   if (!fs.existsSync(dir)) return files;
 
-  const OCAML_EXTS = new Set([".ml", ".mli", ".mll", ".mly"]);
+  const OCAML_EXTS = new Set([".ml", ".mli", ".mll", ".mly", ".md"]);
 
   function walk(currentDir: string, relPrefix: string) {
     const entries = fs.readdirSync(currentDir, { withFileTypes: true });

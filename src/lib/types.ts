@@ -3,6 +3,8 @@ export interface Exercise {
   name: string;
   testCount: number;
   order: number;
+  difficulty?: 1 | 2 | 3;       // 1=introductory, 2=intermediate, 3=challenging
+  estimatedMinutes?: number;
 }
 
 export interface ModuleInfo {
@@ -12,6 +14,8 @@ export interface ModuleInfo {
   description: string;
   testCount: number;
   labSlug: string | null;
+  hasLearn?: boolean;
+  hasExplore?: boolean;
   exercises: Exercise[];
 }
 

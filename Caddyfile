@@ -1,5 +1,3 @@
 :80 {
-	root * /srv
-	file_server
-	try_files {path} {path}.html {path}/index.html
+	reverse_proxy app:3000
 }

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { LABS, getModuleForLab } from "@/lib/modules";
 import { getLabReadme, getLabFiles, getLabTestFiles } from "@/lib/content";
@@ -10,6 +11,12 @@ export function generateStaticParams() {
 
 interface Props {
   params: Promise<{ labSlug: string }>;
+}
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { labSlug } = await params;
+  const lab = LABS.find((l) => l.slug === labSlug);
+  return { title: lab ? `${lab.name} — PA Bootcamp` : "Lab — PA Bootcamp" };
 }
 
 export default async function LabPage({ params }: Props) {

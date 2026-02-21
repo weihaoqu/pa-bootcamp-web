@@ -1,14 +1,32 @@
 services:
   app:
     build: .
+    environment:
+      - HOSTNAME=0.0.0.0
+      - ADMIN_USERNAME=${ADMIN_USERNAME}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+      - NEXTAUTH_URL=${NEXTAUTH_URL}
+      - DB_PATH=/data/pa-bootcamp.db
+      - CLASS_JOIN_CODE=${CLASS_JOIN_CODE}
+    volumes:
+      - sqlite_data:/data
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2-alpine
     ports:
       - "80:80"
       - "443:443"
     volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
       - caddy_data:/data
       - caddy_config:/config
+    depends_on:
+      - app
     restart: unless-stopped
 
 volumes:
+  sqlite_data:
   caddy_data:
   caddy_config:

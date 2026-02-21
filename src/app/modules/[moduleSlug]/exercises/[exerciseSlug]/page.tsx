@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { MODULES } from "@/lib/modules";
 import {
@@ -21,6 +22,13 @@ export function generateStaticParams() {
 
 interface Props {
   params: Promise<{ moduleSlug: string; exerciseSlug: string }>;
+}
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { moduleSlug, exerciseSlug } = await params;
+  const mod = MODULES.find((m) => m.slug === moduleSlug);
+  const ex = mod?.exercises.find((e) => e.slug === exerciseSlug);
+  return { title: ex ? `${ex.name} — ${mod!.name} — PA Bootcamp` : "Exercise — PA Bootcamp" };
 }
 
 export default async function ExercisePage({ params }: Props) {

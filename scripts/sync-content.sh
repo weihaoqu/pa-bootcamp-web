@@ -14,9 +14,15 @@ CONTENT_DIR="$PROJECT_ROOT/content"
 SOURCE="${1:-${CONTENT_SOURCE_DIR:-$(dirname "$PROJECT_ROOT")/program-analysis-bootcamp-student}}"
 
 if [ ! -d "$SOURCE" ]; then
-  echo "Error: source directory not found: $SOURCE"
+  if [ -d "$CONTENT_DIR/modules" ] && [ "$(ls "$CONTENT_DIR/modules/" 2>/dev/null | wc -l)" -gt 0 ]; then
+    echo "Source not found ($SOURCE) but content/ already populated — skipping sync."
+    exit 0
+  fi
+  echo "Warning: source directory not found: $SOURCE"
   echo "Set CONTENT_SOURCE_DIR or pass the path as an argument."
-  exit 1
+  echo "Continuing with empty content directory."
+  mkdir -p "$CONTENT_DIR/modules" "$CONTENT_DIR/labs" "$CONTENT_DIR/slides"
+  exit 0
 fi
 
 echo "Syncing content from: $SOURCE"

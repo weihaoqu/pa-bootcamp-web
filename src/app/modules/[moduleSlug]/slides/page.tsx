@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { MODULES, SLIDE_DECKS } from "@/lib/modules";
 import { getLectureSlides, getGuideSlides } from "@/lib/slides";
@@ -9,6 +10,12 @@ export function generateStaticParams() {
 
 interface Props {
   params: Promise<{ moduleSlug: string }>;
+}
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { moduleSlug } = await params;
+  const mod = MODULES.find((m) => m.slug === moduleSlug);
+  return { title: mod ? `Slides: ${mod.name} — PA Bootcamp` : "Slides — PA Bootcamp" };
 }
 
 export default async function SlidesPage({ params }: Props) {
